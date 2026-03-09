@@ -5,8 +5,9 @@ import jwt from 'jsonwebtoken';
 import { Session } from '../models/session.js';
 import User from '../models/user.js';
 import { createSession, setSessionCookies } from '../services/auth.js';
+import { saveFileToCloudinary } from '../utils/saveFileToCloudinary.js';
 
-// 📱 Register a new user
+// 📱 Register a new user --------------------------------------
 export const registerUser = async (req, res, next) => {
   try {
     const { email, password, username } = req.body;
@@ -23,7 +24,7 @@ export const registerUser = async (req, res, next) => {
       username,
     });
 
-    const newSession = await createSession(newUser._id);
+    const newSession = await createSession(newUser._id, req);
     setSessionCookies(res, newSession);
 
     res.status(201).json({
@@ -35,11 +36,12 @@ export const registerUser = async (req, res, next) => {
       },
     });
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };
 
-// 🔑 User login
+// 🔑 User login --------------------------------------
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -56,7 +58,7 @@ export const loginUser = async (req, res, next) => {
 
     await Session.deleteOne({ userId: user._id });
 
-    const newSession = await createSession(user._id);
+    const newSession = await createSession(user._id, req);
     setSessionCookies(res, newSession);
     res.status(200).json({
       message: 'Login successful',
@@ -65,6 +67,7 @@ export const loginUser = async (req, res, next) => {
         username: user.username,
         userSurname: user.userSurname,
         email: user.email,
+        telegramId: user.telegramId,
         avatar: user.avatar,
         phone: user.phone,
         city: user.city,
@@ -73,11 +76,12 @@ export const loginUser = async (req, res, next) => {
       },
     });
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };
 
-// 🚪 User logout
+// 🚪 User logout --------------------------------------
 export const logoutUser = async (req, res, next) => {
   try {
     const { sessionId } = req.cookies;
@@ -89,11 +93,12 @@ export const logoutUser = async (req, res, next) => {
     res.clearCookie('sessionId');
     res.status(204).send();
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };
 
-// 🔄 Refresh user session
+// 🔄 Refresh user session --------------------------------------
 export const refreshUserSession = async (req, res, next) => {
   try {
     const session = await Session.findOne({
@@ -115,16 +120,17 @@ export const refreshUserSession = async (req, res, next) => {
       refreshToken: req.cookies.refreshToken,
     });
 
-    const newSession = await createSession(session.userId);
+    const newSession = await createSession(session.userId, req);
     setSessionCookies(res, newSession);
 
     res.status(200).json({ message: 'Session refreshed' });
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };
 
-// 📲 Get current user session
+// 📲 Get current user session --------------------------------------
 export const getSession = async (req, res, next) => {
   try {
     const { accessToken, refreshToken } = req.cookies;
@@ -161,7 +167,7 @@ export const getSession = async (req, res, next) => {
       }
 
       // 🔄 створюємо нову сесію
-      const newSession = await createSession(oldSession.userId);
+      const newSession = await createSession(oldSession.userId, req);
       setSessionCookies(res, newSession);
 
       // ❗ очищаємо попередню
@@ -178,12 +184,12 @@ export const getSession = async (req, res, next) => {
 
     return res.status(200).json({ success: false });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(200).json({ success: false });
   }
 };
 
-// 🔐 Reset password
+// 🔐 Reset password --------------------------------------
 export const resetPassword = async (req, res, next) => {
   try {
     const { token, password } = req.body;
@@ -207,6 +213,33 @@ export const resetPassword = async (req, res, next) => {
 
     res.status(200).json({ message: 'Password successfully updated' });
   } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+// 🔄 Update user avatar --------------------------------------
+export const updateAvatar = async (req, res, next) => {
+  try {
+    const file = req.file; // Це буде доступно, якщо в роуті додати upload.single('avatar')
+
+    if (!file) {
+      return next(createHttpError(400, 'No file provided'));
+    }
+
+    // Твій Cloudinary сервіс
+    const result = await saveFileToCloudinary(file.buffer);
+
+    // Тепер результат.secure_url можна записувати в базу
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { avatarUrl: result.secure_url },
+      { new: true },
+    );
+
+    res.json({ avatarUrl: user.avatarUrl });
+  } catch (error) {
+    console.error(error);
     next(error);
   }
 };
