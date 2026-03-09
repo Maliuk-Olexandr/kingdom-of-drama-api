@@ -101,31 +101,36 @@ export const logoutUser = async (req, res, next) => {
 // 🔄 Refresh user session --------------------------------------
 export const refreshUserSession = async (req, res, next) => {
   try {
-    const session = await Session.findOne({
-      _id: req.cookies.sessionId,
-      refreshToken: req.cookies.refreshToken,
-    });
+    const { refreshToken } = req.cookies;
+    if (!refreshToken)
+      return next(createHttpError(401, 'Missing refresh token'));
 
-    if (!session) {
-      return next(createHttpError(401, 'Session not found'));
+    // беремо всі активні сесії
+    const sessions = await Session.find({ revoked: false });
+
+    let sessionFound = null;
+    for (const s of sessions) {
+      const match = await bcrypt.compare(refreshToken, s.refreshTokenHash);
+      if (match) {
+        sessionFound = s;
+        break;
+      }
     }
 
-    const isExpired = new Date() > new Date(session.refreshTokenValidUntil);
-    if (isExpired) {
-      return next(createHttpError(401, 'Session token expired'));
-    }
+    if (!sessionFound)
+      return next(createHttpError(401, 'Invalid refresh token'));
 
-    await Session.deleteOne({
-      _id: session._id,
-      refreshToken: req.cookies.refreshToken,
-    });
+    // видаляємо стару сесію
+    await Session.deleteOne({ _id: sessionFound._id });
 
-    const newSession = await createSession(session.userId, req);
-    setSessionCookies(res, newSession);
+    // створюємо нову
+    const { session: newSession, refreshToken: newRefreshToken } =
+      await createSession(sessionFound.userId, req);
+
+    setSessionCookies(res, newSession, newRefreshToken);
 
     res.status(200).json({ message: 'Session refreshed' });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
@@ -152,28 +157,45 @@ export const getSession = async (req, res, next) => {
 
     // 2️⃣ Пробуємо refreshToken
     if (refreshToken) {
-      const oldSession = await Session.findOne({ refreshToken });
+      // 🔍 Беремо всі активні сесії, які ще не revoked
+      const sessions = await Session.find({ revoked: false });
 
-      if (!oldSession) {
+      let matchedSession = null;
+
+      // 🔑 Порівнюємо хеш з токеном у cookie
+      for (const s of sessions) {
+        const isMatch = await bcrypt.compare(refreshToken, s.refreshTokenHash);
+        if (isMatch) {
+          matchedSession = s;
+          break;
+        }
+      }
+
+      if (!matchedSession) {
         return res.status(200).json({ success: false });
       }
 
+      // ⏳ Перевіряємо expiration
       const isExpired =
-        new Date() > new Date(oldSession.refreshTokenValidUntil);
-
+        new Date() > new Date(matchedSession.refreshTokenValidUntil);
       if (isExpired) {
-        await Session.deleteOne({ _id: oldSession._id });
+        await Session.deleteOne({ _id: matchedSession._id });
         return res.status(200).json({ success: false });
       }
 
-      // 🔄 створюємо нову сесію
-      const newSession = await createSession(oldSession.userId, req);
-      setSessionCookies(res, newSession);
+      // 🔄 Створюємо нову сесію
+      const { session: newSession, refreshToken: newRefreshToken } =
+        await createSession(matchedSession.userId, req);
 
-      // ❗ очищаємо попередню
-      await Session.deleteOne({ _id: oldSession._id });
+      // 🥠 Встановлюємо cookie з новим refreshToken
+      setSessionCookies(res, newSession, newRefreshToken);
 
-      const user = await User.findById(oldSession.userId).select('-password');
+      // ❗ Видаляємо стару сесію
+      await Session.deleteOne({ _id: matchedSession._id });
+
+      const user = await User.findById(matchedSession.userId).select(
+        '-password',
+      );
 
       return res.status(200).json({
         success: true,
