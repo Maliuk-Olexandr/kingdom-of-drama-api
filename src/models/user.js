@@ -35,6 +35,11 @@ const userSchema = new Schema(
       trim: true,
       lowercase: true,
     },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: String,
     password: {
       type: String,
       required: true,
