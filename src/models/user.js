@@ -17,14 +17,20 @@ const userSchema = new Schema(
     },
     phone: {
       type: String,
-      required: true,
+      required: false,
+      unique: true,
+      trim: true,
+    },
+    telegramId: {
+      type: String,
+      required: false,
       unique: true,
       trim: true,
     },
     email: {
       type: String,
-      required: false,
-      unique: false,
+      required: true,
+      unique: true,
       sparse: true,
       trim: true,
       lowercase: true,
