@@ -4,7 +4,7 @@ import { PHONE_REGEX } from '../constants/const.js';
 
 export const updateUserSchema = {
   [Segments.BODY]: Joi.object({
-    userName: Joi.string(),
+    nickname: Joi.string(),
     userSurname: Joi.string(),
     phone: Joi.string().regex(PHONE_REGEX),
     city: Joi.string(),

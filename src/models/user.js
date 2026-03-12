@@ -4,11 +4,16 @@ import { ROLES } from '../constants/const.js';
 
 const userSchema = new Schema(
   {
-    username: {
+    nickname: {
       type: String,
       trim: true,
       required: true,
       maxlength: 32,
+    },
+    userName: {
+      type: String,
+      trim: true,
+      required: false,
     },
     userSurname: {
       type: String,
@@ -19,12 +24,14 @@ const userSchema = new Schema(
       type: String,
       required: false,
       unique: true,
+      sparse: true,
       trim: true,
     },
     telegramId: {
       type: String,
       required: false,
       unique: true,
+      sparse: true,
       trim: true,
     },
     email: {

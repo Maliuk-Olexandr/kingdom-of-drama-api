@@ -10,7 +10,7 @@ import { saveFileToCloudinary } from '../utils/saveFileToCloudinary.js';
 // 📱 Register a new user --------------------------------------
 export const registerUser = async (req, res, next) => {
   try {
-    const { email, password, username } = req.body;
+    const { email, password, nickname } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -21,7 +21,7 @@ export const registerUser = async (req, res, next) => {
     const newUser = await User.create({
       email,
       password: hashedPassword,
-      username,
+      nickname,
     });
 
     const { session: newSession, refreshToken } = await createSession(
@@ -35,7 +35,7 @@ export const registerUser = async (req, res, next) => {
       user: {
         _id: newUser._id,
         email: newUser.email,
-        username: newUser.username,
+        nickname: newUser.nickname,
       },
     });
   } catch (error) {
@@ -70,14 +70,13 @@ export const loginUser = async (req, res, next) => {
       message: 'Login successful',
       user: {
         _id: user._id,
-        username: user.username,
+        nickname: user.nickname,
+        userName: user.userName,
         userSurname: user.userSurname,
         email: user.email,
         telegramId: user.telegramId,
         avatar: user.avatar,
         phone: user.phone,
-        city: user.city,
-        postNumber: user.postNumber,
         role: user.role,
       },
     });

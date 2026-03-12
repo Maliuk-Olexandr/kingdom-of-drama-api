@@ -2,10 +2,10 @@ import { Joi, Segments } from 'celebrate';
 
 export const registerUserSchema = {
   [Segments.BODY]: Joi.object({
-    username: Joi.string().max(32).required().messages({
-      'string.max': 'Username must be no longer than 32 characters',
-      'string.empty': 'Username is required',
-      'any.required': 'Username is required',
+    nickname: Joi.string().max(32).required().messages({
+      'string.max': 'nickname must be no longer than 32 characters',
+      'string.empty': 'nickname is required',
+      'any.required': 'nickname is required',
     }),
 
     email: Joi.string().email().required().messages({
