@@ -19,8 +19,8 @@ const router = Router();
 //public routes
 router.post('/api/register', celebrate(registerUserSchema), registerUser);
 router.post('/api/login', celebrate(loginUserSchema), loginUser);
-router.get('/api/session', getSession);
 router.post('/api/refresh', refreshUserSession);
+router.get('/api/session', getSession);
 //protected routes
 router.post('/api/logout', authenticate, logoutUser);
 

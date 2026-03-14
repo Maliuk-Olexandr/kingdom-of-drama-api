@@ -4,7 +4,11 @@ import jwt from 'jsonwebtoken';
 
 import { Session } from '../models/session.js';
 import User from '../models/user.js';
-import { createSession, setSessionCookies } from '../services/auth.js';
+import {
+  createSession,
+  setSessionCookies,
+  validateAndRefreshSession,
+} from '../services/auth.js';
 import { saveFileToCloudinary } from '../utils/saveFileToCloudinary.js';
 
 // 📱 Register a new user --------------------------------------
@@ -24,11 +28,12 @@ export const registerUser = async (req, res, next) => {
       nickname,
     });
 
-    const { session: newSession, refreshToken } = await createSession(
+    const { session, accessToken, refreshToken } = await createSession(
       newUser._id,
       req,
     );
-    setSessionCookies(res, newSession, refreshToken);
+
+    setSessionCookies(res, accessToken, refreshToken, session);
 
     res.status(201).json({
       message: 'User successfully registered',
@@ -61,11 +66,11 @@ export const loginUser = async (req, res, next) => {
 
     await Session.deleteOne({ userId: user._id });
 
-    const { session: newSession, refreshToken } = await createSession(
+    const { session, accessToken, refreshToken } = await createSession(
       user._id,
       req,
     );
-    setSessionCookies(res, newSession, refreshToken);
+    setSessionCookies(res, accessToken, refreshToken, session);
     res.status(200).json({
       message: 'Login successful',
       user: {
@@ -106,35 +111,20 @@ export const logoutUser = async (req, res, next) => {
 // 🔄 Refresh user session --------------------------------------
 export const refreshUserSession = async (req, res, next) => {
   try {
-    const { refreshToken } = req.cookies;
-    if (!refreshToken)
-      return next(createHttpError(401, 'Missing refresh token'));
+    const { refreshToken, sessionId } = req.cookies;
+    if (!refreshToken || !sessionId)
+      throw createHttpError(401, 'Missing tokens');
 
-    // беремо всі активні сесії
-    const sessions = await Session.find({ revoked: false });
+    const {
+      session,
+      accessToken,
+      refreshToken: newRefreshToken,
+    } = await validateAndRefreshSession(sessionId, refreshToken, req);
 
-    let sessionFound = null;
-    for (const s of sessions) {
-      const match = await bcrypt.compare(refreshToken, s.refreshTokenHash);
-      if (match) {
-        sessionFound = s;
-        break;
-      }
-    }
+    setSessionCookies(res, accessToken, newRefreshToken, session);
 
-    if (!sessionFound)
-      return next(createHttpError(401, 'Invalid refresh token'));
-
-    // видаляємо стару сесію
-    await Session.deleteOne({ _id: sessionFound._id });
-
-    // створюємо нову
-    const { session: newSession, refreshToken: newRefreshToken } =
-      await createSession(sessionFound.userId, req);
-
-    setSessionCookies(res, newSession, newRefreshToken);
-
-    res.status(200).json({ message: 'Session refreshed' });
+    const user = await User.findById(session.userId).select('-password -__v');
+    res.status(200).json({ message: 'Session refreshed', user });
   } catch (error) {
     next(error);
   }
@@ -143,75 +133,39 @@ export const refreshUserSession = async (req, res, next) => {
 // 📲 Get current user session --------------------------------------
 export const getSession = async (req, res, next) => {
   try {
-    const { accessToken, refreshToken } = req.cookies;
+    const { accessToken, refreshToken, sessionId } = req.cookies;
 
-    // ⛔ Немає жодних токенів
-    if (!accessToken && !refreshToken) {
-      return res.status(200).json({ success: false });
-    }
-
-    // 1️⃣ Перевіряємо accessToken
+    // 1. Спроба по JWT
     if (accessToken) {
-      const session = await Session.findOne({ accessToken });
+      try {
+        const payload = jwt.verify(accessToken, process.env.JWT_SECRET);
+        const user = await User.findById(payload.sub).select('-password');
+        if (user) return res.status(200).json({ success: true, user });
+      } catch {
+        /* ігноруємо */
+      }
+    }
 
-      if (session && new Date() < new Date(session.accessTokenValidUntil)) {
+    // 2. Спроба по Refresh
+    if (refreshToken && sessionId) {
+      try {
+        const {
+          session,
+          accessToken,
+          refreshToken: newRefreshToken,
+        } = await validateAndRefreshSession(sessionId, refreshToken, req);
+
+        setSessionCookies(res, accessToken, newRefreshToken, session);
         const user = await User.findById(session.userId).select('-password');
-        return res.status(200).json({ success: true, user });
+        return res.status(200).json({ success: true, refreshed: true, user });
+      } catch {
+        /* ігноруємо */
       }
     }
 
-    // 2️⃣ Перевіряємо refreshToken (hashed)
-    if (refreshToken) {
-      // Беремо всі активні сесії
-      const sessions = await Session.find({ revoked: false });
-
-      let matchedSession = null;
-      for (const s of sessions) {
-        const isMatch = await bcrypt.compare(refreshToken, s.refreshTokenHash);
-        if (isMatch) {
-          matchedSession = s;
-          break;
-        }
-      }
-
-      if (!matchedSession) {
-        return res.status(200).json({ success: false });
-      }
-
-      // Перевірка expiration
-      const isExpired =
-        new Date() > new Date(matchedSession.refreshTokenValidUntil);
-      if (isExpired) {
-        await Session.deleteOne({ _id: matchedSession._id });
-        return res.status(200).json({ success: false });
-      }
-
-      // 🔄 Створюємо нову сесію
-      const { session: newSession, refreshToken: newRefreshToken } =
-        await createSession(matchedSession.userId, req);
-
-      // Встановлюємо cookie з новим refreshToken
-      setSessionCookies(res, newSession, newRefreshToken);
-
-      // Видаляємо стару сесію
-      await Session.deleteOne({ _id: matchedSession._id });
-
-      const user = await User.findById(matchedSession.userId).select(
-        '-password',
-      );
-
-      return res.status(200).json({
-        success: true,
-        refreshed: true,
-        user,
-      });
-    }
-
-    // ❌ Якщо нічого не знайшли
     return res.status(200).json({ success: false });
   } catch (error) {
-    console.error(error);
-    return res.status(200).json({ success: false });
+    next(error);
   }
 };
 
