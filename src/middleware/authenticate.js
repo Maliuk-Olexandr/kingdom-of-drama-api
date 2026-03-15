@@ -4,6 +4,9 @@ import { Session } from '../models/session.js';
 import User from '../models/user.js';
 
 export const authenticate = async (req, res, next) => {
+  if (req.path === '/api/logout') {
+    return next(); // Пропускаємо автентифікацію для логауту
+  }
   try {
     const accessToken = req.cookies.accessToken;
 
