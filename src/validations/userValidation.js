@@ -1,12 +1,10 @@
 import { Joi, Segments } from 'celebrate';
 
-import { PHONE_REGEX } from '../constants/const.js';
-
 export const updateUserSchema = {
   [Segments.BODY]: Joi.object({
     nickname: Joi.string(),
     userSurname: Joi.string(),
-    phone: Joi.string().regex(PHONE_REGEX),
+    email: Joi.string().email(),
     city: Joi.string(),
     postNumber: Joi.number(),
   }).min(1),
