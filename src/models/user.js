@@ -71,11 +71,6 @@ const userSchema = new Schema(
       required: false,
       trim: true,
     },
-    postNumber: {
-      type: String,
-      required: false,
-      trim: true,
-    },
     orders: [
       {
         type: Schema.Types.ObjectId,

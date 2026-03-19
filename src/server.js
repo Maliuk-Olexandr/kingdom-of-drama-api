@@ -13,6 +13,7 @@ import { logger } from './middleware/logger.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { limiter } from './middleware/rateLimiter.js';
 import authRoutes from './routes/authRoutes.js';
+import heroesRoutes from './routes/heroesRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 
 const app = express();
@@ -29,8 +30,8 @@ app.use(logger);
 
 // public routes
 
-// app.use(categoriesRoutes);
-// app.use(goodsRoutes);
+app.use(heroesRoutes);
+
 // app.use(feedbackRoutes);
 // app.use(subscriptionsRoutes);
 // app.use(filterRoutes);
