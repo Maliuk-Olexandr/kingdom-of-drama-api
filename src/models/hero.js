@@ -37,12 +37,14 @@ const heroSchema = new Schema(
       avatar: {
         type: String,
         trim: true,
-        default: 'https://ac.goit.global/fullstack/react/default-avatar.jpg',
+        default:
+          'https://res.cloudinary.com/kingdom-of-drama/image/upload/v1774017551/default-avatar_hbnxwy.webp',
       },
       portraite: {
         type: String,
         trim: true,
-        default: 'https://ac.goit.global/fullstack/react/default-avatar.jpg',
+        default:
+          'https://res.cloudinary.com/kingdom-of-drama/image/upload/v1774017311/default-portraite_rqtzxw.webp',
       },
     },
     statuses: {
