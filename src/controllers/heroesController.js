@@ -1,5 +1,3 @@
-import createHttpError from 'http-errors';
-
 import Hero from '../models/hero.js';
 
 export const getAllHeroes = async (req, res, next) => {
@@ -46,10 +44,12 @@ export const getHeroById = async (req, res, next) => {
     const hero = await Hero.findById(heroId)
       .populate('author', 'nickname')
       .exec();
+
     if (!hero) {
-      next(createHttpError(404, 'Hero not found'));
-      return;
+      // Повертаємо 200, але додаємо прапорець, що героя немає
+      return res.status(200).json({ message: 'Hero not found', status: 404 });
     }
+
     res.status(200).json(hero);
   } catch (error) {
     next(error);

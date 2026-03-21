@@ -40,7 +40,7 @@ const heroSchema = new Schema(
         default:
           'https://res.cloudinary.com/kingdom-of-drama/image/upload/v1774017551/default-avatar_hbnxwy.webp',
       },
-      portraite: {
+      portrait: {
         type: String,
         trim: true,
         default:

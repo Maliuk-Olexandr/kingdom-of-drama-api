@@ -10,7 +10,7 @@ export const createHeroSchema = {
     description: Joi.string(),
     images: Joi.object({
       avatar: Joi.string().uri(),
-      portraite: Joi.string().uri(),
+      portrait: Joi.string().uri(),
     }),
     basicInfo: Joi.object({
       age: Joi.string(),
