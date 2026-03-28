@@ -223,7 +223,7 @@ export const requestResetEmail = async (req, res, next) => {
     }
 
     // Динамічний секрет: основний секрет + поточний хеш пароля
-    const secret = process.env.JWT_SECRET + user.password;
+    const secret = process.env.JWT_RESET_PASSWORD_SECRET + user.password;
 
     const resetToken = jwt.sign(
       { sub: user._id, action: 'password-reset' },
@@ -262,7 +262,7 @@ export const resetPassword = async (req, res, next) => {
     if (!user) return next(createHttpError(404, 'User not found'));
 
     // Перевіряємо токен за допомогою того ж секрету
-    const secret = process.env.JWT_SECRET + user.password;
+    const secret = process.env.JWT_RESET_PASSWORD_SECRET + user.password;
 
     try {
       jwt.verify(token, secret);
