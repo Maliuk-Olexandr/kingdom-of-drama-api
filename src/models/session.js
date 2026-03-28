@@ -12,9 +12,14 @@ const sessionSchema = new mongoose.Schema(
     ip: String,
     userAgent: String,
     revoked: { type: Boolean, default: false },
-    refreshTokenValidUntil: Date,
+    refreshTokenValidUntil: { type: Date, required: true },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    versionKey: false,
+  },
 );
+
+sessionSchema.index({ refreshTokenValidUntil: 1 }, { expireAfterSeconds: 0 });
 
 export const Session = mongoose.model('Session', sessionSchema);

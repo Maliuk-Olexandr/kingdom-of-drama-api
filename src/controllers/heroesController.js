@@ -17,7 +17,7 @@ export const getAllHeroes = async (req, res, next) => {
         .skip(skip)
         .limit(perPage)
         .sort({ [sortBy]: sortOrder })
-        .populate('author', 'nickname')
+        .populate('author', 'username')
         .exec(),
     ]);
 
@@ -42,7 +42,7 @@ export const getHeroById = async (req, res, next) => {
   try {
     const { heroId } = req.params;
     const hero = await Hero.findById(heroId)
-      .populate('author', 'nickname')
+      .populate('author', 'username')
       .exec();
 
     if (!hero) {

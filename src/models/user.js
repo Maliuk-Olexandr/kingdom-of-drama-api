@@ -4,28 +4,39 @@ import { ROLES } from '../constants/const.js';
 
 const userSchema = new Schema(
   {
-    nickname: {
+    username: {
       type: String,
       trim: true,
       required: true,
+      unique: true,
       maxlength: 32,
+      lowercase: true,
+    },
+    displayName: {
+      type: String,
+      trim: true,
+      required: false,
+      maxlength: 64,
+      default: function () {
+        return this.username;
+      },
     },
     userName: {
       type: String,
       trim: true,
       required: false,
+      maxlength: 32,
     },
     userSurname: {
       type: String,
       trim: true,
       required: false,
+      maxlength: 32,
     },
-    phone: {
-      type: String,
+    inviter: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
       required: false,
-      unique: true,
-      sparse: true,
-      trim: true,
     },
     telegramId: {
       type: String,
@@ -33,6 +44,10 @@ const userSchema = new Schema(
       unique: true,
       sparse: true,
       trim: true,
+    },
+    telegramIdVerified: {
+      type: Boolean,
+      default: false,
     },
     email: {
       type: String,
@@ -64,7 +79,7 @@ const userSchema = new Schema(
       required: true,
       trim: true,
       enum: ROLES,
-      default: 'User',
+      default: 'user',
     },
     city: {
       type: String,

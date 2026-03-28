@@ -36,6 +36,7 @@ export const createSession = async (userId, req) => {
     refreshToken,
   };
 };
+
 export const setSessionCookies = (res, accessToken, refreshToken, session) => {
   const isProduction = process.env.NODE_ENV === 'production';
   const baseCookieOptions = {
@@ -66,7 +67,9 @@ export const validateAndRefreshSession = async (
   refreshToken,
   req,
 ) => {
+  // 1. Пошук сесії
   const session = await Session.findById(sessionId);
+
   if (
     !session ||
     session.revoked ||
@@ -76,11 +79,45 @@ export const validateAndRefreshSession = async (
     throw createHttpError(401, 'Invalid or expired session');
   }
 
+  // 2. Валідація токена (перевірка секретної частини)
   const parts = refreshToken.split('.');
-  const tokenSecret = parts[1]; // Беремо тільки другу частину
+  const tokenSecret = parts[1];
   const isMatch = await bcrypt.compare(tokenSecret, session.refreshTokenHash);
-  if (!isMatch) throw createHttpError(401, 'Invalid refresh token');
 
-  await Session.deleteOne({ _id: session._id });
-  return await createSession(session.userId, req);
+  if (!isMatch) {
+    // Якщо токен не збігається, можливо, це спроба крадіжки сесії.
+    // У серйозних системах тут можна анулювати всі сесії користувача.
+    throw createHttpError(401, 'Invalid refresh token');
+  }
+
+  // 3. Генерація НОВИХ даних для цієї ж сесії
+  const accessToken = jwt.sign(
+    { sub: session.userId },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: '15m',
+    },
+  );
+
+  const newTokenSecret = crypto.randomBytes(32).toString('hex');
+  const newRefreshTokenHash = await bcrypt.hash(newTokenSecret, 10);
+  const newRefreshToken = `${session._id}.${newTokenSecret}`;
+
+  // 4. Оновлення існуючого запису (findByIdAndUpdate)
+  const updatedSession = await Session.findByIdAndUpdate(
+    sessionId,
+    {
+      refreshTokenHash: newRefreshTokenHash,
+      refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
+      ip: req.ip, // Оновлюємо IP, якщо юзер перейшов з Wi-Fi на LTE
+      userAgent: req.headers['user-agent'],
+    },
+    { new: true }, // Повертаємо оновлений об'єкт
+  );
+
+  return {
+    session: updatedSession,
+    accessToken,
+    refreshToken: newRefreshToken,
+  };
 };
