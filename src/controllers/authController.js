@@ -74,13 +74,13 @@ export const registerUser = async (req, res, next) => {
 // 📧 Email verification --------------------------------------
 export const verifyEmail = async (req, res, next) => {
   try {
-    const { token } = req.body;
+    const { token } = req.body; // Отримуємо токен з тіла запиту
 
     if (!token) {
       throw createHttpError(400, 'Verification token is missing');
     }
 
-    // 1. Перевіряємо JWT токен
+    // 1. Перевіряємо валідність JWT
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_EMAIL_VERIFICATION_SECRET);
@@ -88,20 +88,25 @@ export const verifyEmail = async (req, res, next) => {
       throw createHttpError(401, 'Token is invalid or expired');
     }
 
-    // 2. Шукаємо користувача
-    const user = await User.findOne({
-      email: decoded.email,
-      verificationToken: token,
-    });
+    // 2. Знайти та оновити одним запитом
+    const user = await User.findOneAndUpdate(
+      {
+        email: decoded.email,
+        verificationToken: token, // Перевіряємо, що токен у базі збігається
+      },
+      {
+        $set: {
+          emailVerified: true,
+          verificationToken: null, // "Спалюємо" токен після використання
+        },
+      },
+      { new: true }, // Повернути вже оновлений документ (якщо знадобиться)
+    );
 
+    // 3. Якщо користувача не знайдено (або токен вже був видалений)
     if (!user) {
       throw createHttpError(404, 'User not found or already verified');
     }
-
-    // 3. Оновлюємо статус
-    user.emailVerified = true;
-    user.verificationToken = null; // Видаляємо токен після використання
-    await user.save();
 
     res.status(200).json({
       success: true,
