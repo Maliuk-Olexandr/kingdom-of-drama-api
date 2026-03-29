@@ -16,9 +16,21 @@ import { sendEmail } from '../utils/sendEmail.js';
 // 📱 Register a new user --------------------------------------
 export const registerUser = async (req, res, next) => {
   try {
-    const { email, password, username } = req.body;
+    const { email, password, username, inviter } = req.body;
     const normalizedUsername = username.trim().toLowerCase();
     const normalizedEmail = email.trim().toLowerCase();
+    const inviterName = inviter ? inviter.trim().toLowerCase() : null;
+
+    let inviterId = null;
+    if (inviterName) {
+      const inviterUser = await User.findOne({ username: inviterName });
+      if (!inviterUser) {
+        return next(
+          createHttpError(400, `Inviter username "${inviterName}" not found`),
+        );
+      }
+      inviterId = inviterUser._id;
+    }
 
     // 1. Валідація та перевірка наявності (твій існуючий код)
     const existingUser = await User.findOne({
@@ -42,29 +54,29 @@ export const registerUser = async (req, res, next) => {
       password: hashedPassword,
       username: normalizedUsername,
       verificationToken,
-      emailVerified: false, // за замовчуванням false
+      inviter: inviterId,
     });
 
     // 3. Відправка листа (використовуємо твій існуючий sendEmail)
     await sendEmail({
       email: newUser.email,
-      subject: 'Підтвердження електронної пошти',
+      subject: 'Email Verification',
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Вітаємо у Kingdom of Drama!</h2>
-          <p>Будь ласка, підтвердіть вашу пошту, натиснувши на кнопку нижче:</p>
+          <h2>Welcome to Kingdom of Drama!</h2>
+          <p>Please verify your email by clicking the button below:</p>
           <a href="${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}"
              style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-             Підтвердити пошту
+             Verify Email
           </a>
-          <p>Посилання дійсне 24 години.</p>
+          <p>The link is valid for 24 hours.</p>
         </div>
       `,
     });
 
     // 4. Відповідь БЕЗ сесії
     res.status(201).json({
-      message: 'Реєстрація успішна! Перевірте пошту для підтвердження акаунту.',
+      message: 'User registered. Please check your email for verification.',
     });
   } catch (error) {
     next(error);
@@ -89,35 +101,40 @@ export const verifyEmail = async (req, res, next) => {
     }
 
     // 2. Знайти та оновити одним запитом
-    const user = await User.findOneAndUpdate(
-      {
-        email: decoded.email,
-        verificationToken: token, // Перевіряємо, що токен у базі збігається
-      },
-      {
-        $set: {
-          emailVerified: true,
-          verificationToken: null, // "Спалюємо" токен після використання
+    try {
+      const user = await User.findOneAndUpdate(
+        {
+          email: decoded.email,
+          verificationToken: token, // Перевіряємо, що токен у базі збігається
         },
-      },
-      { new: true }, // Повернути вже оновлений документ (якщо знадобиться)
-    );
+        {
+          $set: {
+            emailVerified: true,
+            verificationToken: null, // "Спалюємо" токен після використання
+          },
+        },
+        { new: true }, // Повернути вже оновлений документ (якщо знадобиться)
+      );
 
-    // 3. Якщо користувача не знайдено (або токен вже був видалений)
-    if (!user) {
-      throw createHttpError(404, 'User not found or already verified');
+      // 3. Якщо користувача не знайдено (або токен вже був видалений)
+      if (!user) {
+        throw createHttpError(404, 'User not found or already verified');
+      }
+      const { session, accessToken, refreshToken } = await createSession(
+        user._id,
+        req,
+      );
+      setSessionCookies(res, accessToken, refreshToken, session);
+
+      res.status(200).json({
+        success: true,
+        message: 'Email verified successfully! You can now log in.',
+        user,
+      });
+    } catch (err) {
+      console.error('Database error during email verification:', err);
+      throw createHttpError(500, 'Internal server error');
     }
-    const { session, accessToken, refreshToken } = await createSession(
-      user._id,
-      req,
-    );
-    setSessionCookies(res, accessToken, refreshToken, session);
-
-    res.status(200).json({
-      success: true,
-      message: 'Email verified successfully! You can now log in.',
-      user,
-    });
   } catch (error) {
     next(error);
   }
@@ -203,6 +220,40 @@ export const checkUsernameAvailability = async (req, res, next) => {
     return res
       .status(200)
       .json({ available: true, message: 'Username is available' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ✅ Check email availability --------------------------------------
+export const checkEmailAvailability = async (req, res, next) => {
+  try {
+    let { email } = req.query;
+
+    if (!email) {
+      return next(createHttpError(400, 'Email is required'));
+    }
+
+    // Очищаємо пробіли та переводимо в нижній регістр
+    email = email.trim().toLowerCase();
+
+    // 1. Валідація формату
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/; /* Простий regex для перевірки формату email */
+    if (!emailRegex.test(email)) {
+      return next(createHttpError(400, 'Invalid email format'));
+    }
+
+    // 2. Швидкий пошук (пряме співпадіння за індексом)
+    const user = await User.findOne({ email });
+
+    if (user) {
+      return next(createHttpError(409, 'Email is already in use'));
+    }
+
+    return res
+      .status(200)
+      .json({ available: true, message: 'Email is available' });
   } catch (error) {
     next(error);
   }

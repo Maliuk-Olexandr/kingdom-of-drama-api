@@ -11,6 +11,7 @@ const userSchema = new Schema(
       unique: true,
       maxlength: 32,
       lowercase: true,
+      index: true,
     },
     displayName: {
       type: String,
