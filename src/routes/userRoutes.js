@@ -18,9 +18,9 @@ const router = Router();
 //   updateUserAvatar,
 // );
 
-router.get('/api/users/me', authenticate, getCurrentUser);
+router.get('/users/me', authenticate, getCurrentUser);
 router.patch(
-  '/api/users/me',
+  '/users/me',
   authenticate,
   celebrate(updateUserSchema),
   updateUser,

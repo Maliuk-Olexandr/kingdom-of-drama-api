@@ -74,7 +74,7 @@ export const registerUser = async (req, res, next) => {
 // 📧 Email verification --------------------------------------
 export const verifyEmail = async (req, res, next) => {
   try {
-    const { token } = req.query;
+    const { token } = req.body;
 
     if (!token) {
       throw createHttpError(400, 'Verification token is missing');
@@ -104,6 +104,7 @@ export const verifyEmail = async (req, res, next) => {
     await user.save();
 
     res.status(200).json({
+      success: true,
       message: 'Email verified successfully! You can now log in.',
     });
   } catch (error) {
@@ -133,6 +134,7 @@ export const loginUser = async (req, res, next) => {
     setSessionCookies(res, accessToken, refreshToken, session);
 
     res.status(200).json({
+      success: true,
       message: 'Login successful',
       user,
     });
