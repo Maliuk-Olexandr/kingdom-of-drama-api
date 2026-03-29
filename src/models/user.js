@@ -61,7 +61,8 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    verificationToken: String,
+    verificationToken: { type: String },
+    verificationTokenExpires: { type: Date },
     password: {
       type: String,
       required: true,

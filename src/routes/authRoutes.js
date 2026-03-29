@@ -10,8 +10,10 @@ import {
   checkUsernameAvailability,
   requestResetEmail,
   resetPassword,
+  verifyEmail,
 } from '../controllers/authController.js';
 import { authenticate } from '../middleware/authenticate.js';
+import { authLimiter } from '../middleware/rateLimiter.js';
 import {
   registerUserSchema,
   loginUserSchema,
@@ -23,29 +25,32 @@ import {
 const router = Router();
 
 // 📝 User registration --------------------------------------
-router.post('/api/register', celebrate(registerUserSchema), registerUser);
-router.post('/api/login', celebrate(loginUserSchema), loginUser);
-router.post('/api/logout', authenticate, logoutUser);
+router.post('/register', celebrate(registerUserSchema), registerUser);
 
+router.post('/login', celebrate(loginUserSchema), authLimiter, loginUser);
+router.post('/logout', authenticate, logoutUser);
+router.get('/verify-email', verifyEmail);
 // 🔄 Refresh user session --------------------------------------
-router.post('/api/refresh', refreshUserSession);
-router.get('/api/session', getSession);
+router.post('/refresh', refreshUserSession);
+router.get('/session', getSession);
 router.get(
-  '/api/check-username',
+  '/check-username',
   celebrate(checkUsernameSchema),
   checkUsernameAvailability,
 );
 
 // 📧 Password reset flow --------------------------------------
 router.post(
-  '/api/request-reset-password-email',
+  '/request-reset-password-email',
   celebrate(requestResetEmailSchema),
+  authLimiter,
   requestResetEmail,
 );
 // 2. Безпосередньо зміна пароля (з токеном та ID)
 router.post(
-  '/api/reset-password',
+  '/reset-password',
   celebrate(resetPasswordSchema),
+  authLimiter,
   resetPassword,
 );
 

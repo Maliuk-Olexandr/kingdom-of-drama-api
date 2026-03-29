@@ -8,25 +8,28 @@ import { FIFTEEN_MINUTES, ONE_DAY } from '../constants/time.js';
 import { Session } from '../models/session.js';
 
 export const createSession = async (userId, req) => {
-  // JWT access token
+  // 1. JWT access token
   const accessToken = jwt.sign({ sub: userId }, process.env.JWT_SECRET, {
     expiresIn: '15m',
   });
 
-  // refresh token parts
+  // 2. Refresh token parts
   const tokenId = crypto.randomUUID();
   const tokenSecret = crypto.randomBytes(32).toString('hex');
-
   const refreshToken = `${tokenId}.${tokenSecret}`;
-
   const refreshTokenHash = await bcrypt.hash(tokenSecret, 10);
+
+  // 3. Отримуємо дані про клієнта
+  // Завдяки trust proxy, req.ip на Render буде реальною адресою користувача
+  const clientIp = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
 
   const session = await Session.create({
     _id: tokenId,
     userId,
     refreshTokenHash,
-    ip: req.ip,
-    userAgent: req.headers['user-agent'],
+    ip: clientIp,
+    userAgent: userAgent.substring(0, 256), // Обмежуємо довжину для бази даних
     refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
   });
 
@@ -109,8 +112,8 @@ export const validateAndRefreshSession = async (
     {
       refreshTokenHash: newRefreshTokenHash,
       refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
-      ip: req.ip, // Оновлюємо IP, якщо юзер перейшов з Wi-Fi на LTE
-      userAgent: req.headers['user-agent'],
+      ip: req.ip || req.headers['x-forwarded-for'] || 'unknown', // Оновлюємо IP, якщо юзер перейшов з Wi-Fi на LTE
+      userAgent: (req.headers['user-agent'] || 'unknown').substring(0, 256),
     },
     { new: true }, // Повертаємо оновлений об'єкт
   );

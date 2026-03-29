@@ -11,7 +11,7 @@ import { connectMongoDB } from './db/connectMongoDB.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './middleware/logger.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
-import { limiter } from './middleware/rateLimiter.js';
+import { generalLimiter } from './middleware/rateLimiter.js';
 import authRoutes from './routes/authRoutes.js';
 import heroesRoutes from './routes/heroesRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -21,17 +21,17 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(cors());
-app.use(limiter);
+app.use(logger);
+app.use(generalLimiter);
 app.use(express.json());
 app.use(cookieParser());
-app.use(logger);
 
 // app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // app.get('/', (req, res) => res.redirect('/api-docs'));
 
 // public routes
 
-app.use(heroesRoutes);
+app.use('/api', heroesRoutes);
 
 // app.use(feedbackRoutes);
 // app.use(subscriptionsRoutes);
@@ -39,8 +39,8 @@ app.use(heroesRoutes);
 
 // protected routes
 
-app.use(authRoutes);
-app.use(userRoutes);
+app.use('/api', authRoutes);
+app.use('/api', userRoutes);
 
 app.use(notFoundHandler);
 app.use(errors());

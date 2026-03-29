@@ -20,49 +20,93 @@ export const registerUser = async (req, res, next) => {
     const normalizedUsername = username.trim().toLowerCase();
     const normalizedEmail = email.trim().toLowerCase();
 
-    // 1. Validate username format
-    if (
-      !USERNAME_REGEX.test(normalizedUsername) ||
-      normalizedUsername.length > 32
-    ) {
-      return next(
-        createHttpError(
-          400,
-          'Invalid username format (use lowercase letters, numbers, dots or underscores)',
-        ),
-      );
-    }
-
-    // 2. Check if email or username already exists
+    // 1. Валідація та перевірка наявності (твій існуючий код)
     const existingUser = await User.findOne({
       $or: [{ email: normalizedEmail }, { username: normalizedUsername }],
     });
     if (existingUser) {
-      const field =
-        existingUser.email === normalizedEmail ? 'Email' : 'Username';
-      return next(createHttpError(409, `${field} is already in use`));
+      return next(createHttpError(409, `Email or Username is already in use`));
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 2. Створюємо унікальний токен (можна JWT або просто рандомний рядок)
+    const verificationToken = jwt.sign(
+      { email: normalizedEmail },
+      process.env.JWT_EMAIL_VERIFICATION_SECRET,
+      { expiresIn: '24h' },
+    );
+
     const newUser = await User.create({
       email: normalizedEmail,
       password: hashedPassword,
       username: normalizedUsername,
+      verificationToken,
+      emailVerified: false, // за замовчуванням false
     });
 
-    const { session, accessToken, refreshToken } = await createSession(
-      newUser._id,
-      req,
-    );
+    // 3. Відправка листа (використовуємо твій існуючий sendEmail)
+    await sendEmail({
+      email: newUser.email,
+      subject: 'Підтвердження електронної пошти',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>Вітаємо у Kingdom of Drama!</h2>
+          <p>Будь ласка, підтвердіть вашу пошту, натиснувши на кнопку нижче:</p>
+          <a href="${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}"
+             style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+             Підтвердити пошту
+          </a>
+          <p>Посилання дійсне 24 години.</p>
+        </div>
+      `,
+    });
 
-    setSessionCookies(res, accessToken, refreshToken, session);
-
+    // 4. Відповідь БЕЗ сесії
     res.status(201).json({
-      message: 'User successfully registered',
-      user: newUser,
+      message: 'Реєстрація успішна! Перевірте пошту для підтвердження акаунту.',
     });
   } catch (error) {
-    console.error(error);
+    next(error);
+  }
+};
+
+// 📧 Email verification --------------------------------------
+export const verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      throw createHttpError(400, 'Verification token is missing');
+    }
+
+    // 1. Перевіряємо JWT токен
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_EMAIL_VERIFICATION_SECRET);
+    } catch {
+      throw createHttpError(401, 'Token is invalid or expired');
+    }
+
+    // 2. Шукаємо користувача
+    const user = await User.findOne({
+      email: decoded.email,
+      verificationToken: token,
+    });
+
+    if (!user) {
+      throw createHttpError(404, 'User not found or already verified');
+    }
+
+    // 3. Оновлюємо статус
+    user.emailVerified = true;
+    user.verificationToken = null; // Видаляємо токен після використання
+    await user.save();
+
+    res.status(200).json({
+      message: 'Email verified successfully! You can now log in.',
+    });
+  } catch (error) {
     next(error);
   }
 };
@@ -71,16 +115,15 @@ export const registerUser = async (req, res, next) => {
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: email.toLowerCase() });
 
-    const user = await User.findOne({ email: normalizedEmail });
-    if (!user) {
-      return next(createHttpError(401, 'Invalid email or password'));
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      throw createHttpError(401, 'Invalid email or password');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return next(createHttpError(401, 'Invalid email or password'));
+    // ❗ ПЕРЕВІРКА ВЕРИФІКАЦІЇ
+    if (!user.emailVerified) {
+      throw createHttpError(403, 'Please verify your email before logging in.');
     }
 
     const { session, accessToken, refreshToken } = await createSession(
@@ -88,12 +131,12 @@ export const loginUser = async (req, res, next) => {
       req,
     );
     setSessionCookies(res, accessToken, refreshToken, session);
+
     res.status(200).json({
       message: 'Login successful',
       user,
     });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };

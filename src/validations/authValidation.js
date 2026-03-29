@@ -30,7 +30,7 @@ export const registerUserSchema = {
       'string.empty': 'Password is required',
       'any.required': 'Password is required',
     }),
-  }),
+  }).unknown(true),
 };
 
 export const loginUserSchema = {
