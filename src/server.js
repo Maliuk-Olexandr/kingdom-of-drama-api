@@ -17,6 +17,7 @@ import heroesRoutes from './routes/heroesRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(cors());
