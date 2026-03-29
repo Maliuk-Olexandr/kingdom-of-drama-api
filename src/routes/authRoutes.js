@@ -30,6 +30,7 @@ router.post('/register', celebrate(registerUserSchema), registerUser);
 router.post('/login', celebrate(loginUserSchema), authLimiter, loginUser);
 router.post('/logout', authenticate, logoutUser);
 router.post('/verify-email', verifyEmail);
+
 // 🔄 Refresh user session --------------------------------------
 router.post('/refresh', refreshUserSession);
 router.get('/session', getSession);

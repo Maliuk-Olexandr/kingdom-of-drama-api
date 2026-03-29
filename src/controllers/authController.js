@@ -107,10 +107,16 @@ export const verifyEmail = async (req, res, next) => {
     if (!user) {
       throw createHttpError(404, 'User not found or already verified');
     }
+    const { session, accessToken, refreshToken } = await createSession(
+      user._id,
+      req,
+    );
+    setSessionCookies(res, accessToken, refreshToken, session);
 
     res.status(200).json({
       success: true,
       message: 'Email verified successfully! You can now log in.',
+      user,
     });
   } catch (error) {
     next(error);
