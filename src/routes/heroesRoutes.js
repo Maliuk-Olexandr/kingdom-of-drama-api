@@ -9,8 +9,8 @@ import {
 
 const router = Router();
 
-router.get('/api/heroes', celebrate(createHeroSchema), getAllHeroes);
+router.get('/heroes', celebrate(createHeroSchema), getAllHeroes);
 
-router.get('/api/heroes/:heroId', celebrate(heroIdSchema), getHeroById);
+router.get('/heroes/:heroId', celebrate(heroIdSchema), getHeroById);
 
 export default router;
