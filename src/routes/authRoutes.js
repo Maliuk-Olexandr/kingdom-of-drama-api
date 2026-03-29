@@ -36,11 +36,13 @@ router.get(
   checkUsernameAvailability,
 );
 
+// 📧 Password reset flow --------------------------------------
 router.post(
-  '/api/request-reset-email',
+  '/api/request-reset-password-email',
   celebrate(requestResetEmailSchema),
   requestResetEmail,
 );
+// 2. Безпосередньо зміна пароля (з токеном та ID)
 router.post(
   '/api/reset-password',
   celebrate(resetPasswordSchema),
