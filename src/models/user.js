@@ -26,7 +26,7 @@ const userSchema = new Schema(
       type: String,
       trim: true,
       required: false,
-      maxlength: 1500,
+      maxlength: 800,
     },
     balance: {
       type: Number,
@@ -50,6 +50,17 @@ const userSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: false,
+    },
+    phone: {
+      type: String,
+      required: false,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    phoneVerified: {
+      type: Boolean,
+      default: false,
     },
     telegramId: {
       type: String,

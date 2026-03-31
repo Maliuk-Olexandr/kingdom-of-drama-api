@@ -112,6 +112,10 @@ export const verifyEmail = async (req, res, next) => {
             emailVerified: true,
             verificationToken: null, // "Спалюємо" токен після використання
           },
+          // $inc збільшує (або зменшує) числові поля
+          $inc: {
+            balance: 5, // Нараховуємо 5 коїнів
+          },
         },
         { new: true }, // Повернути вже оновлений документ (якщо знадобиться)
       );
@@ -120,6 +124,19 @@ export const verifyEmail = async (req, res, next) => {
       if (!user) {
         throw createHttpError(404, 'User not found or already verified');
       }
+      // 4. Нараховуємо бонус запрошуючому (якщо він є)
+      if (user.inviter) {
+        try {
+          // Шукаємо інвайтера за його ID і додаємо 5 коїнів
+          await User.findByIdAndUpdate(user.inviter, {
+            $inc: { balance: 5 },
+          });
+        } catch (inviterErr) {
+          // Логуємо помилку, але НЕ викидаємо її далі (щоб не зламати верифікацію нового юзера)
+          console.error('Failed to add bonus to inviter:', inviterErr);
+        }
+      }
+
       const { session, accessToken, refreshToken } = await createSession(
         user._id,
         req,
