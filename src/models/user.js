@@ -22,6 +22,18 @@ const userSchema = new Schema(
         return this.username;
       },
     },
+    aboutMe: {
+      type: String,
+      trim: true,
+      required: false,
+      maxlength: 1500,
+    },
+    balance: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
     userName: {
       type: String,
       trim: true,
@@ -74,7 +86,8 @@ const userSchema = new Schema(
       type: String,
       required: false,
       trim: true,
-      default: 'https://ac.goit.global/fullstack/react/default-avatar.jpg',
+      default:
+        'https://res.cloudinary.com/kingdom-of-drama/image/upload/v1774017551/default-avatar_hbnxwy.webp',
     },
     role: {
       type: String,
