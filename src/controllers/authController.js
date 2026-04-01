@@ -114,7 +114,7 @@ export const verifyEmail = async (req, res, next) => {
           },
           // $inc збільшує (або зменшує) числові поля
           $inc: {
-            balance: 5, // Нараховуємо 5 коїнів
+            balance: 10, // Нараховуємо 10 коїнів
           },
         },
         { new: true }, // Повернути вже оновлений документ (якщо знадобиться)
@@ -131,6 +131,14 @@ export const verifyEmail = async (req, res, next) => {
           await User.findByIdAndUpdate(user.inviter, {
             $inc: { balance: 5 },
           });
+          await User.findOneAndUpdate(
+            { _id: user._id },
+            {
+              $inc: {
+                balance: 5, // Нараховуємо 5 коїнів
+              },
+            },
+          );
         } catch (inviterErr) {
           // Логуємо помилку, але НЕ викидаємо її далі (щоб не зламати верифікацію нового юзера)
           console.error('Failed to add bonus to inviter:', inviterErr);
