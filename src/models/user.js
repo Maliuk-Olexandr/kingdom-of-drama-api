@@ -22,6 +22,14 @@ const userSchema = new Schema(
         return this.username;
       },
     },
+    birthdate: {
+      type: Date,
+      required: false,
+    },
+    birthdateHidden: {
+      type: Boolean,
+      default: true,
+    },
     aboutMe: {
       type: String,
       trim: true,

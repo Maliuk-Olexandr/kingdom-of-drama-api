@@ -5,6 +5,8 @@ export const updateUserSchema = {
     username: Joi.string(),
     displayName: Joi.string(),
     aboutMe: Joi.string().allow(''),
+    birthdate: Joi.date().allow(null),
+    birthdateHidden: Joi.boolean(),
     userName: Joi.string().allow(''),
     userSurname: Joi.string().allow(''),
     phone: Joi.string().allow(''),
