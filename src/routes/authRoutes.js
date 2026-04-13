@@ -7,8 +7,7 @@ import {
   logoutUser,
   getSession,
   refreshUserSession,
-  checkUsernameAvailability,
-  checkEmailAvailability,
+  checkAvailability,
   requestResetEmail,
   resetPassword,
   verifyEmail,
@@ -20,8 +19,7 @@ import {
   loginUserSchema,
   requestResetEmailSchema,
   resetPasswordSchema,
-  checkUsernameSchema,
-  checkEmailSchema,
+  checkAvailabilitySchema,
 } from '../validations/authValidation.js';
 
 const router = Router();
@@ -37,11 +35,10 @@ router.post('/verify-email', verifyEmail);
 router.post('/refresh', refreshUserSession);
 router.get('/session', getSession);
 router.get(
-  '/check-username',
-  celebrate(checkUsernameSchema),
-  checkUsernameAvailability,
+  '/check-availability',
+  celebrate(checkAvailabilitySchema),
+  checkAvailability,
 );
-router.get('/check-email', celebrate(checkEmailSchema), checkEmailAvailability);
 
 // 📧 Password reset flow --------------------------------------
 router.post(

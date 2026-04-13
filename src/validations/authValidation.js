@@ -1,6 +1,6 @@
 import { Joi, Segments } from 'celebrate';
 
-import { USERNAME_REGEX } from '../constants/const.js';
+import { USERNAME_REGEX, AVAILABILITY_FIELDS } from '../constants/const.js';
 
 export const registerUserSchema = {
   [Segments.BODY]: Joi.object({
@@ -74,30 +74,29 @@ export const resetPasswordSchema = {
     }),
   }),
 };
-export const checkUsernameSchema = {
+
+export const checkAvailabilitySchema = {
   [Segments.QUERY]: Joi.object({
-    username: Joi.string()
-      .pattern(USERNAME_REGEX)
-      .min(3)
-      .max(32)
+    // Перевіряємо, що поле входить до списку дозволених
+    field: Joi.string()
+      .valid(...Object.keys(AVAILABILITY_FIELDS))
       .required()
       .messages({
-        'string.pattern.base':
-          'username can only contain latin letters, numbers, dots, and underscores',
-        'string.min': 'username must be at least 3 characters long',
-        'string.max': 'username must be no longer than 32 characters',
-        'string.empty': 'username is required',
-        'any.required': 'username is required',
+        'any.only': 'Validation for this field is not supported',
+        'any.required': 'Field is required',
       }),
-  }),
-};
 
-export const checkEmailSchema = {
-  [Segments.QUERY]: Joi.object({
-    email: Joi.string().email().required().messages({
-      'string.email': 'Invalid email format',
-      'string.empty': 'Email is required',
-      'any.required': 'Email is required',
+    // Значення валідуємо базово (рядок),
+    // оскільки детальна перевірка regex вже є в самому контролері
+    value: Joi.string().min(1).max(128).required().messages({
+      'string.empty': 'Value cannot be empty',
+      'any.required': 'Value is required',
+    }),
+
+    // Валідуємо як рядок формату MongoDB ObjectId
+    excludeUserId: Joi.string().hex().length(24).messages({
+      'string.hex': 'Invalid user ID format',
+      'string.length': 'Invalid user ID length',
     }),
   }),
 };

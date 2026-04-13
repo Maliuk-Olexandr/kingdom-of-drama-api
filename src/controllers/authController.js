@@ -1,8 +1,9 @@
 import bcrypt from 'bcrypt';
 import createHttpError from 'http-errors';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
-import { USERNAME_REGEX } from '../constants/const.js';
+import { AVAILABILITY_FIELDS } from '../constants/const.js';
 import { Session } from '../models/session.js';
 import User from '../models/user.js';
 import {
@@ -214,71 +215,52 @@ export const logoutUser = async (req, res, next) => {
 };
 
 // ✅ Check username availability --------------------------------------
-export const checkUsernameAvailability = async (req, res, next) => {
+// очікуємо query параметри: field (username, email, phone, telegramId), value, excludeUserId (опційно для оновлення профілю)
+export const checkAvailability = async (req, res, next) => {
   try {
-    let { username } = req.query;
+    const { field, value, excludeUserId } = req.query;
 
-    if (!username) {
-      return next(createHttpError(400, 'Username is required'));
-    }
-
-    // Очищаємо пробіли та переводимо в нижній регістр
-    username = username.trim().toLowerCase();
-
-    // 1. Валідація формату (тільки маленька латиниця, цифри, крапка, підкреслення)
-    if (!USERNAME_REGEX.test(username) || username.length > 32) {
+    // 1. Перевірка наявності конфігурації для поля
+    const config = AVAILABILITY_FIELDS[field];
+    if (!config) {
       return next(
         createHttpError(
           400,
-          'Invalid username format (use lowercase letters, numbers, dots or underscores)',
+          `Availability check for '${field}' is not supported`,
         ),
       );
     }
 
-    // 2. Швидкий пошук (пряме співпадіння за індексом)
-    const user = await User.findOne({ username });
-
-    if (user) {
-      return next(createHttpError(409, 'Username is already taken'));
+    if (!value) {
+      return next(createHttpError(400, 'Value is required'));
     }
 
-    return res
-      .status(200)
-      .json({ available: true, message: 'Username is available' });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ✅ Check email availability --------------------------------------
-export const checkEmailAvailability = async (req, res, next) => {
-  try {
-    let { email } = req.query;
-
-    if (!email) {
-      return next(createHttpError(400, 'Email is required'));
+    let cleanValue = value.trim().toLowerCase();
+    if (field === 'telegramId') {
+      cleanValue = cleanValue.replace(/^@/, ''); // видаляємо @, якщо він є, для зручності користувача
+    }
+    // 2. Валідація формату
+    if (!config.regex.test(cleanValue)) {
+      return next(createHttpError(400, config.error));
     }
 
-    // Очищаємо пробіли та переводимо в нижній регістр
-    email = email.trim().toLowerCase();
-
-    // 1. Валідація формату
-    const emailRegex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/; /* Простий regex для перевірки формату email */
-    if (!emailRegex.test(email)) {
-      return next(createHttpError(400, 'Invalid email format'));
+    // 3. Динамічний пошук (враховуючи виключення поточного ID для налаштувань)
+    const query = { [field]: cleanValue };
+    if (excludeUserId && mongoose.Types.ObjectId.isValid(excludeUserId)) {
+      query._id = { $ne: excludeUserId };
     }
 
-    // 2. Швидкий пошук (пряме співпадіння за індексом)
-    const user = await User.findOne({ email });
-
-    if (user) {
-      return next(createHttpError(409, 'Email is already in use'));
+    const isTaken = await User.exists(query); // .exists швидший за .findOne, бо повертає лише _id або null
+    const displayField = field === 'telegramId' ? 'Telegram username' : field;
+    if (isTaken) {
+      return next(createHttpError(409, `${displayField} is already taken`));
     }
 
-    return res
-      .status(200)
-      .json({ available: true, message: 'Email is available' });
+    return res.status(200).json({
+      status: 200,
+      message: `${displayField} is available`,
+      data: { available: true },
+    });
   } catch (error) {
     next(error);
   }
