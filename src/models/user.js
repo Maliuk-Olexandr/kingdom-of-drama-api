@@ -120,6 +120,13 @@ const userSchema = new Schema(
       required: false,
       trim: true,
     },
+    heroes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Hero',
+        required: false,
+      },
+    ],
     orders: [
       {
         type: Schema.Types.ObjectId,
