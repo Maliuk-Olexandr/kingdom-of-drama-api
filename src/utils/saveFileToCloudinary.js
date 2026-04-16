@@ -9,15 +9,16 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function saveFileToCloudinary(buffer) {
+export async function saveAvatarToCloudinary(buffer, folderName, fileName) {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: 'kingdom-of-drama',
+        folder: `kingdom-of-drama/users/${folderName}`,
+        public_id: fileName,
         resource_type: 'image',
         overwrite: true,
-        unique_filename: true,
         use_filename: false,
+        invalidate: true,
       },
       (error, result) => (error ? reject(error) : resolve(result)),
     );

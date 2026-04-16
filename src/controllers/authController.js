@@ -11,7 +11,6 @@ import {
   setSessionCookies,
   validateAndRefreshSession,
 } from '../services/auth.js';
-import { saveFileToCloudinary } from '../utils/saveFileToCloudinary.js';
 import { sendEmail } from '../utils/sendEmail.js';
 
 // 📱 Register a new user --------------------------------------
@@ -401,32 +400,6 @@ export const resetPassword = async (req, res, next) => {
         'Password has been successfully reset. All active sessions have been terminated.',
     });
   } catch (error) {
-    next(error);
-  }
-};
-
-// 🔄 Update user avatar --------------------------------------
-export const updateAvatar = async (req, res, next) => {
-  try {
-    const file = req.file; // Це буде доступно, якщо в роуті додати upload.single('avatar')
-
-    if (!file) {
-      return next(createHttpError(400, 'No file provided'));
-    }
-
-    // Твій Cloudinary сервіс
-    const result = await saveFileToCloudinary(file.buffer);
-
-    // Тепер результат.secure_url можна записувати в базу
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { avatar: result.secure_url },
-      { new: true },
-    );
-
-    res.json({ avatar: user.avatar });
-  } catch (error) {
-    console.error(error);
     next(error);
   }
 };
