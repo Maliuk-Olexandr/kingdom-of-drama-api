@@ -26,10 +26,6 @@ const userSchema = new Schema(
       type: Date,
       required: false,
     },
-    birthdateHidden: {
-      type: Boolean,
-      default: true,
-    },
     aboutMe: {
       type: String,
       trim: true,
@@ -85,7 +81,6 @@ const userSchema = new Schema(
       type: String,
       required: true,
       unique: true,
-      sparse: true,
       trim: true,
       lowercase: true,
     },
@@ -119,6 +114,12 @@ const userSchema = new Schema(
       type: String,
       required: false,
       trim: true,
+    },
+    userSettings: {
+      darkMode: { type: Boolean, default: false },
+      birthdateHidden: { type: Boolean, default: true },
+      savedHidden: { type: Boolean, default: false },
+      favoritesHidden: { type: Boolean, default: false },
     },
     heroes: [
       {
