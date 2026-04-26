@@ -11,7 +11,7 @@ import {
   setSessionCookies,
   validateAndRefreshSession,
 } from '../services/auth.js';
-import { sendEmail } from '../utils/sendEmail.js';
+import { sendEmail } from '../services/sendEmail.js';
 
 // 📱 Register a new user --------------------------------------
 export const registerUser = async (req, res, next) => {
@@ -58,20 +58,15 @@ export const registerUser = async (req, res, next) => {
     });
 
     // 3. Відправка листа (використовуємо твій існуючий sendEmail)
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
     await sendEmail({
-      email: newUser.email,
-      subject: 'Email Verification',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Welcome to Kingdom of Drama!</h2>
-          <p>Please verify your email by clicking the button below:</p>
-          <a href="${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}"
-             style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-             Verify Email
-          </a>
-          <p>The link is valid for 24 hours.</p>
-        </div>
-      `,
+      to: newUser.email,
+      subject: 'Kingdom of Drama - Email Verification',
+      template: 'verify-email',
+      context: {
+        verificationUrl,
+        displayName: newUser.displayName,
+      },
     });
 
     // 4. Відповідь БЕЗ сесії
@@ -335,7 +330,7 @@ export const requestResetEmail = async (req, res, next) => {
       return next(createHttpError(404, 'User not found'));
     }
 
-    // Динамічний секрет: основний секрет + поточний хеш пароля
+    // Динамічний секрет: основний секрет + поточний хеш пароля (унеможливлює повторне використання токена)
     const secret = process.env.JWT_RESET_PASSWORD_SECRET + user.password;
 
     const resetToken = jwt.sign(
@@ -346,18 +341,15 @@ export const requestResetEmail = async (req, res, next) => {
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}`;
 
+    // Використовуємо сервіс шаблонів
     await sendEmail({
-      email: user.email,
-      subject: 'Password Reset Request',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Відновлення пароля</h2>
-          <p>Ви отримали цей лист, тому що зробили запит на відновлення пароля.</p>
-          <p>Натисніть на кнопку нижче, щоб встановити новий пароль. Посилання дійсне 15 хвилин.</p>
-          <a href="${resetUrl}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Змінити пароль</a>
-          <p>Якщо ви цього не робили, просто ігноруйте цей лист.</p>
-        </div>
-      `,
+      to: user.email,
+      subject: 'Kingdom of Drama - Password Reset Request',
+      template: 'password-reset',
+      context: {
+        displayName: user.displayName || 'користувачу',
+        resetUrl: resetUrl,
+      },
     });
 
     res.json({ message: 'Лист для скидання пароля надіслано!' });

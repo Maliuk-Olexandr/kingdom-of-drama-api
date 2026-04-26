@@ -1,9 +1,9 @@
 import createHttpError from 'http-errors';
 
 import User from '../models/user.js';
+import { sendEmail } from '../services/sendEmail.js';
 import { generateDeletedUsername } from '../utils/generateUniqueUsername.js';
 import { saveAvatarToCloudinary } from '../utils/saveFileToCloudinary.js';
-import { sendEmail } from '../utils/sendEmail.js';
 
 export const updateUserAvatar = async (req, res, next) => {
   try {
@@ -64,7 +64,7 @@ const flattenObject = (obj, prefix = '') => {
 
 export async function updateUser(req, res, next) {
   try {
-    // 1. Виключаємо поля, які НЕ можна міняти через цей роут
+    // 1. Виключаємо заборонені поля
     const forbiddenFields = [
       'balance',
       'role',
@@ -74,23 +74,41 @@ export async function updateUser(req, res, next) {
       'verificationToken',
       'verificationTokenExpires',
       'heroes',
+      'password', // Пароль теж краще сюди
     ];
     forbiddenFields.forEach((field) => delete req.body[field]);
 
-    // 2. Якщо email змінюється, скидаємо верифікацію
-    if (req.body.email) {
-      req.body.emailVerified = false;
+    // 2. Отримуємо поточні дані користувача з бази
+    const userInDb = await User.findById(req.user._id);
+
+    if (!userInDb) {
+      return next(createHttpError(404, 'User not found'));
     }
 
+    // 3. Логіка зміни Email
+    if (req.body.email) {
+      const newEmail = req.body.email.toLowerCase().trim();
+      const oldEmail = userInDb.email.toLowerCase().trim();
+
+      if (newEmail !== oldEmail) {
+        // Якщо email дійсно новий — скидаємо верифікацію
+        req.body.emailVerified = false;
+      } else {
+        // Якщо email той самий, видаляємо його з body, щоб не перезаписувати
+        delete req.body.email;
+      }
+    }
+
+    // 4. Формуємо дані для оновлення (flatten для вкладених об'єктів, як userSettings)
     const updateData = flattenObject(req.body);
 
-    const user = await User.findOneAndUpdate(
+    const updatedUser = await User.findOneAndUpdate(
       { _id: req.user._id },
       { $set: updateData },
       { new: true, runValidators: true },
     );
 
-    res.status(200).json(user);
+    res.status(200).json(updatedUser);
   } catch (error) {
     next(error);
   }
