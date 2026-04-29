@@ -90,6 +90,13 @@ const userSchema = new Schema(
     },
     verificationToken: { type: String },
     verificationTokenExpires: { type: Date },
+    pendingEmail: {
+      type: String,
+      required: false,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
     password: {
       type: String,
       required: true,

@@ -1,4 +1,7 @@
+import crypto from 'crypto';
+
 import createHttpError from 'http-errors';
+import jwt from 'jsonwebtoken';
 
 import User from '../models/user.js';
 import { sendEmail } from '../services/sendEmail.js';
@@ -52,7 +55,8 @@ const flattenObject = (obj, prefix = '') => {
     if (
       typeof obj[k] === 'object' &&
       obj[k] !== null &&
-      !Array.isArray(obj[k])
+      !Array.isArray(obj[k]) &&
+      !(obj[k] instanceof Date)
     ) {
       Object.assign(acc, flattenObject(obj[k], pre + k));
     } else {
@@ -61,10 +65,9 @@ const flattenObject = (obj, prefix = '') => {
     return acc;
   }, {});
 };
-
+// ======== оновлення юзера ========
 export async function updateUser(req, res, next) {
   try {
-    // 1. Виключаємо заборонені поля
     const forbiddenFields = [
       'balance',
       'role',
@@ -74,32 +77,57 @@ export async function updateUser(req, res, next) {
       'verificationToken',
       'verificationTokenExpires',
       'heroes',
-      'password', // Пароль теж краще сюди
+      'password',
     ];
     forbiddenFields.forEach((field) => delete req.body[field]);
 
-    // 2. Отримуємо поточні дані користувача з бази
     const userInDb = await User.findById(req.user._id);
+    if (!userInDb) return next(createHttpError(404, 'User not found'));
 
-    if (!userInDb) {
-      return next(createHttpError(404, 'User not found'));
-    }
-
-    // 3. Логіка зміни Email
+    // Логіка зміни Email
     if (req.body.email) {
       const newEmail = req.body.email.toLowerCase().trim();
       const oldEmail = userInDb.email.toLowerCase().trim();
 
       if (newEmail !== oldEmail) {
-        // Якщо email дійсно новий — скидаємо верифікацію
-        req.body.emailVerified = false;
+        // 1. Перевіряємо унікальність нової пошти
+        const existingUser = await User.findOne({ email: newEmail });
+        if (existingUser) throw createHttpError(409, 'Email already in use');
+
+        // 2. Створюємо JWT токен для підтвердження наміру
+        // Додаємо userId та newEmail в payload, щоб точно знати, хто і на що міняє
+        const intentToken = jwt.sign(
+          {
+            sub: userInDb._id,
+            newEmail: newEmail,
+            action: 'confirm_email_change',
+          },
+          process.env.JWT_EMAIL_VERIFICATION_SECRET,
+          { expiresIn: '1h' },
+        );
+
+        // 3. Записуємо нову пошту в pending, але НЕ міняємо основну
+        req.body.pendingEmail = newEmail;
+        delete req.body.email;
+
+        // 4. Відправляємо лист на СТАРУ пошту (oldEmail)
+        await sendEmail({
+          to: oldEmail,
+          subject: 'Kingdom of Drama - Confirm Email Change',
+          template: 'confirm-email-change-intent',
+          context: {
+            displayName: userInDb.displayName,
+            newEmail: newEmail,
+            confirmUrl: `${process.env.FRONTEND_URL}/confirm-email-change?token=${intentToken}`,
+          },
+        });
+
+        // Видаляємо email з тіла, щоб findOneAndUpdate не затер основну пошту
       } else {
-        // Якщо email той самий, видаляємо його з body, щоб не перезаписувати
         delete req.body.email;
       }
     }
 
-    // 4. Формуємо дані для оновлення (flatten для вкладених об'єктів, як userSettings)
     const updateData = flattenObject(req.body);
 
     const updatedUser = await User.findOneAndUpdate(
@@ -113,31 +141,154 @@ export async function updateUser(req, res, next) {
     next(error);
   }
 }
+// Підтвердження наміру зміни пошти (клік по посиланню в листі зі старої пошти)
+export async function confirmEmailChangeIntent(req, res, next) {
+  try {
+    const { token } = req.query;
+    if (!token) return next(createHttpError(400, 'Token is required'));
+    // 1. Верифікація першого токена (намір)
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_EMAIL_VERIFICATION_SECRET,
+    );
+
+    // 2. Генеруємо ДРУГИЙ токен
+    const finalToken = jwt.sign(
+      {
+        sub: decoded.sub,
+        targetEmail: decoded.newEmail,
+        action: 'verify_new_email',
+      },
+      process.env.JWT_EMAIL_VERIFICATION_SECRET,
+      { expiresIn: '24h' },
+    );
+
+    // 3. Оновлюємо користувача одним запитом
+    // Ми шукаємо за ID ТА перевіряємо, чи pendingEmail збігається з токеном
+    const user = await User.findOneAndUpdate(
+      {
+        _id: decoded.sub,
+        pendingEmail: decoded.newEmail,
+      },
+      {
+        $set: { verificationToken: finalToken },
+      },
+      { new: true }, // Повертає оновлений документ
+    );
+
+    if (!user) {
+      throw createHttpError(400, 'Request not found or already processed');
+    }
+
+    // 4. Тепер використовуємо дані 'user' для відправки листа
+    await sendEmail({
+      to: user.pendingEmail,
+      subject: 'Kingdom of Drama - Verify Your New Email Address',
+      template: 'verify-new-email',
+      context: {
+        displayName: user.displayName,
+        verifyUrl: `${process.env.FRONTEND_URL}/verify-new-email?token=${finalToken}`,
+      },
+    });
+
+    res.json({
+      message:
+        'Intent confirmed. Now check your NEW email for final verification.',
+    });
+  } catch {
+    next(createHttpError(401, 'Token is invalid or has expired'));
+  }
+}
+
+export const completeEmailChange = async (req, res, next) => {
+  try {
+    const { token } = req.query;
+
+    // 1. Верифікація фінального токена (JWT)
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_EMAIL_VERIFICATION_SECRET,
+    );
+
+    // 2. Атомарне оновлення
+    // Шукаємо за ID, токеном у базі та відповідністю targetEmail
+    const user = await User.findOneAndUpdate(
+      {
+        _id: decoded.sub,
+        verificationToken: token, // Перевірка, що токен не використаний повторно
+        pendingEmail: decoded.targetEmail, // Перевірка, що пошта не змінилася в процесі
+      },
+      {
+        $set: {
+          email: decoded.targetEmail, // Офіційна зміна
+          emailVerified: true, // Підтверджуємо статус
+          pendingEmail: null, // Очищаємо тимчасове поле
+          verificationToken: null, // Анулюємо токен
+        },
+      },
+      { new: true, runValidators: true },
+    );
+
+    if (!user) {
+      return next(
+        createHttpError(
+          400,
+          'Link is invalid or has already been used. Please try changing your email again.',
+        ),
+      );
+    }
+
+    // 3. (Опціонально) Відправка сповіщення на стару пошту (user.email вже змінено в об'єкті,
+    // але якщо ти зберіг стару пошту раніше, можна надіслати лист про успіх)
+
+    res.json({
+      message:
+        'Congratulations! Your email address has been successfully changed.',
+      newEmail: user.email,
+    });
+  } catch {
+    // Якщо помилка в jwt.verify або в базі
+    next(
+      createHttpError(
+        401,
+        'Link is invalid or has expired. Please try changing your email again.',
+      ),
+    );
+  }
+};
 
 // ======== видалення юзера ========
 //  (Anonimization - заміна даних на дефолтні, щоб зберегти референси в базі)
 // 1. Запит на видалення аккаунта (генерація токена і відправка листа)
 export async function requestDeleteAccount(req, res, next) {
   try {
-    const user = await User.findById(req.user._id);
+    const userId = req.user._id;
+    const userInDb = await User.findById(userId);
 
-    // Генеруємо токен (можна використати crypto.randomBytes)
-    const deleteToken = crypto.randomBytes(32).toString('hex');
-    const deleteTokenExpires = Date.now() + 3600000; // 1 година
+    if (!userInDb) return next(createHttpError(404, 'User not found'));
 
-    user.verificationToken = deleteToken;
-    user.verificationTokenExpires = deleteTokenExpires;
-    await user.save();
+    const deleteToken = jwt.sign(
+      {
+        sub: userId,
+        targetEmail: userInDb.email,
+        action: 'delete_account',
+      },
+      process.env.JWT_EMAIL_VERIFICATION_SECRET,
+      { expiresIn: '24h' },
+    );
 
-    // Відправляємо лист з посиланням для підтвердження видалення аккаунта
+    await User.findByIdAndUpdate(userId, {
+      $set: { verificationToken: deleteToken },
+    });
+
     await sendEmail({
-      to: user.email,
+      to: userInDb.email,
       subject: 'Kingdom of Drama - Confirm Account Deletion',
       template: 'delete-confirmation',
       context: { token: deleteToken },
     });
 
-    res.status(200).json({ message: 'Лист для підтвердження надіслано' });
+    res.status(200).json({ message: 'Confirmation email sent' });
   } catch (error) {
     next(error);
   }
@@ -150,7 +301,6 @@ export async function confirmDeleteAccount(req, res, next) {
   try {
     const user = await User.findOne({
       verificationToken: token,
-      verificationTokenExpires: { $gt: Date.now() },
     });
 
     if (!user)

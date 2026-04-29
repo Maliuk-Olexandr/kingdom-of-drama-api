@@ -9,7 +9,7 @@ export const updateUserSchema = {
     userName: Joi.string().allow(''),
     userSurname: Joi.string().allow(''),
     phone: Joi.string().allow(''),
-    email: Joi.string().email(),
+    email: Joi.string().email().lowercase(),
     city: Joi.string().allow(''),
     telegramId: Joi.string().allow(''),
     userSettings: Joi.object({
@@ -17,8 +17,22 @@ export const updateUserSchema = {
       birthdateHidden: Joi.boolean(),
       savedHidden: Joi.boolean(),
       favoritesHidden: Joi.boolean(),
-    }).default({}), // Додаємо .default({}), щоб userSettings завжди був об'єктом, навіть якщо його не передали
+    }).default({}),
   })
     .min(1)
-    .unknown(false), // .min(1) - вимагає принаймні одне поле для оновлення, .unknown(false) - забороняє додаткові поля
+    .unknown(false),
+};
+
+// Валідація токенів у query (для посилань)
+export const tokenQuerySchema = {
+  [Segments.QUERY]: Joi.object({
+    token: Joi.string().required(),
+  }),
+};
+
+// Валідація токенів у body (для кнопок/форм)
+export const tokenBodySchema = {
+  [Segments.BODY]: Joi.object({
+    token: Joi.string().required(),
+  }),
 };
