@@ -84,6 +84,13 @@ const userSchema = new Schema(
       trim: true,
       lowercase: true,
     },
+    oldEmail: {
+      type: String,
+      required: false,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
     emailVerified: {
       type: Boolean,
       default: false,

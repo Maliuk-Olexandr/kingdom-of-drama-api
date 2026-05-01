@@ -220,6 +220,7 @@ export const completeEmailChange = async (req, res, next) => {
       },
       {
         $set: {
+          oldEmail: user.email, // Зберігаємо стару пошту в окреме поле
           email: decoded.targetEmail, // Офіційна зміна
           emailVerified: true, // Підтверджуємо статус
           pendingEmail: null, // Очищаємо тимчасове поле
@@ -238,8 +239,16 @@ export const completeEmailChange = async (req, res, next) => {
       );
     }
 
-    // 3. (Опціонально) Відправка сповіщення на стару пошту (user.email вже змінено в об'єкті,
-    // але якщо ти зберіг стару пошту раніше, можна надіслати лист про успіх)
+    // 3. (Опціонально) Відправка сповіщення на стару пошту про успішну зміну
+    await sendEmail({
+      to: user.oldEmail,
+      subject: 'Kingdom of Drama - Your Email Has Been Changed',
+      template: 'email-changed-notification',
+      context: {
+        displayName: user.displayName,
+        newEmail: user.email,
+      },
+    });
 
     res.json({
       message:
