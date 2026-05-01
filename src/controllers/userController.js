@@ -106,8 +106,9 @@ export async function updateUser(req, res, next) {
           { expiresIn: '1h' },
         );
 
-        // 3. Записуємо нову пошту в pending, але НЕ міняємо основну
+        // 3. Записуємо нову пошту в pending, але НЕ міняємо основну, щоб не порушувати логіку входу та не втратити зв'язок з поточним email
         req.body.pendingEmail = newEmail;
+        req.body.oldEmail = oldEmail; // Зберігаємо стару пошту для подальшого використання
         delete req.body.email;
 
         // 4. Відправляємо лист на СТАРУ пошту (oldEmail)
@@ -220,7 +221,6 @@ export const completeEmailChange = async (req, res, next) => {
       },
       {
         $set: {
-          oldEmail: user.email, // Зберігаємо стару пошту в окреме поле
           email: decoded.targetEmail, // Офіційна зміна
           emailVerified: true, // Підтверджуємо статус
           pendingEmail: null, // Очищаємо тимчасове поле
