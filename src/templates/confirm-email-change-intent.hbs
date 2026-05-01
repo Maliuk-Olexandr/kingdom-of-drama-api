@@ -1,1 +1,66 @@
       {{!-- Ви намагаєтесь змінити пошту. Якщо це ви — натисніть тут". --}}
+<html>
+  <head>
+    <style>
+      .container {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        padding: 30px;
+        text-align: center;
+        background-color: #f9f9f9;
+      }
+      .content {
+        background-color: #ffffff;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        display: inline-block;
+        max-width: 500px;
+      }
+      .button {
+        background-color: #a91e6a;
+        color: #ffffff !important;
+        padding: 14px 28px;
+        text-decoration: none;
+        border-radius: 8px;
+        display: inline-block;
+        font-weight: bold;
+        margin: 25px 0;
+      }
+      .name {
+        color: #a91e6a;
+        font-weight: bold;
+        text-transform: capitalize;
+      }
+      .warning {
+        font-size: 13px;
+        color: #666;
+        font-style: italic;
+      }
+      .footer {
+        margin-top: 20px;
+        font-size: 12px;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='container'>
+      <div class='content'>
+        <h2 style='color: #333;'>Дорогий
+          <span class='name'>{{displayName}}</span>!</h2>
+        <p style='color: #666;'>Ви змінили свою електронну адресу на Kingdom of
+          Drama.</p>
+        <p style='color: #666;'>Будь ласка, підтвердіть свій намір, натиснувши
+          на кнопку нижче:</p>
+        <p style='color: #666;'>Після цього активуйте пошту з нової адреси.</p>
+        <a href='{{confirmUrl}}' class='button'>Підтвердити намір</a>
+
+        <p class='warning'>Посилання дійсне протягом 24 годин.</p>
+      </div>
+      <div class='footer'>
+        &copy; 2026 Kingdom of Drama. Якщо ви не запитували це, будь ласка,
+        ігноруйте цей лист.
+      </div>
+    </div>
+  </body>
+</html>
