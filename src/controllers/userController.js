@@ -360,7 +360,11 @@ export async function confirmDeleteAccount(req, res, next) {
     res.clearCookie('refreshToken');
 
     res.status(200).json({ message: 'Success' });
-  } catch {
-    next(createHttpError(401, 'Token expired or invalid'));
+  } catch (error) {
+    console.error('DETAILED DELETE ERROR:', error); // Це покаже реальну причину в терміналі
+    if (error.name === 'TokenExpiredError') {
+      return next(createHttpError(401, 'Термін дії посилання закінчився'));
+    }
+    next(createHttpError(500, 'Внутрішня помилка сервера при анонімізації'));
   }
 }
