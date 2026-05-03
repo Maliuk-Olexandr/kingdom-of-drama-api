@@ -87,7 +87,14 @@ const userSchema = new Schema(
     oldEmail: {
       type: String,
       required: false,
-      unique: true,
+      unique: false,
+      trim: true,
+      lowercase: true,
+    },
+    pendingEmail: {
+      type: String,
+      required: false,
+      unique: false,
       trim: true,
       lowercase: true,
     },
@@ -97,13 +104,6 @@ const userSchema = new Schema(
     },
     verificationToken: { type: String },
     verificationTokenExpires: { type: Date },
-    pendingEmail: {
-      type: String,
-      required: false,
-      unique: true,
-      trim: true,
-      lowercase: true,
-    },
     password: {
       type: String,
       required: true,
