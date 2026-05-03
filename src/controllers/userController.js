@@ -283,7 +283,7 @@ export async function requestDeleteAccount(req, res, next) {
         action: 'delete_account',
       },
       process.env.JWT_EMAIL_VERIFICATION_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: '1h' },
     );
 
     await User.findByIdAndUpdate(userId, {
@@ -294,7 +294,10 @@ export async function requestDeleteAccount(req, res, next) {
       to: userInDb.email,
       subject: 'Kingdom of Drama - Confirm Account Deletion',
       template: 'delete-confirmation',
-      context: { token: deleteToken },
+      context: {
+        displayName: userInDb.displayName,
+        confirmUrl: `${process.env.FRONTEND_URL}/confirm-delete?token=${deleteToken}`,
+      },
     });
 
     res.status(200).json({ message: 'Confirmation email sent' });
@@ -308,41 +311,56 @@ export async function confirmDeleteAccount(req, res, next) {
   const { token } = req.body;
 
   try {
+    // 1. Верифікуємо JWT
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_EMAIL_VERIFICATION_SECRET,
+    );
+
+    // 2. Шукаємо юзера за ID з токена ТА самим токеном у базі
     const user = await User.findOne({
+      _id: decoded.sub,
       verificationToken: token,
     });
 
     if (!user)
-      return next(createHttpError(400, 'Token is invalid or has expired'));
+      return next(
+        createHttpError(400, 'Invalid token or account already deleted'),
+      );
 
-    // 1. Генеруємо новий унікальний анонімний username
     const anonymousUsername = await generateDeletedUsername();
 
-    // 2. Анонімізуємо дані
-    user.username = anonymousUsername;
-    user.displayName = 'deleted account';
-    user.email = `${anonymousUsername}@deleted.com`; // Робимо email неможливим для входу
-    user.password = crypto.randomBytes(64).toString('hex'); // "Вбиваємо" пароль
-    user.avatar = 'https://res.cloudinary.com/default-deleted.webp';
+    // 3. Анонімізація
+    const updateData = {
+      username: anonymousUsername,
+      displayName: 'Deleted Account',
+      email: `${anonymousUsername}@deleted.com`,
+      password: crypto.randomBytes(32).toString('hex'),
+      avatar:
+        'https://res.cloudinary.com/kingdom-of-drama/image/upload/v1774017551/default-avatar_hbnxwy.webp',
+      birthdate: null,
+      aboutMe: '',
+      phone: null,
+      phoneVerified: false,
+      telegramId: null,
+      telegramIdVerified: false,
+      emailVerified: false,
+      userName: '',
+      userSurname: '',
+      city: '',
+      verificationToken: null, // Важливо очистити токен!
+      role: 'user', // Можна скинути на базову роль
+      balance: 0, // Обнуляємо баланс
+    };
 
-    // Очищаємо приватні поля
-    user.aboutMe = '';
-    user.phone = undefined; // sparse index дозволяє null/undefined
-    user.telegramId = undefined;
-    user.userName = '';
-    user.userSurname = '';
-    user.city = '';
+    await User.findByIdAndUpdate(user._id, { $set: updateData });
 
-    // Очищаємо токени
-    user.verificationToken = undefined;
-    user.verificationTokenExpires = undefined;
-
-    await user.save();
-
-    // 3. Очищаємо куки на клієнті
+    // 4. Очищення куки (якщо запит прийшов з браузера, де була сесія)
     res.clearCookie('accessToken');
-    res.status(200).json({ message: 'Аккаунт успішно анонімізовано' });
-  } catch (error) {
-    next(error);
+    res.clearCookie('refreshToken');
+
+    res.status(200).json({ message: 'Success' });
+  } catch {
+    next(createHttpError(401, 'Token expired or invalid'));
   }
 }

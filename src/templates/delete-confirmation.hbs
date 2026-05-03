@@ -2,19 +2,35 @@
 <html>
 <head>
     <style>
-        .container { font-family: sans-serif; padding: 20px; color: #333; }
-        .code { font-size: 24px; font-weight: bold; color: #a91e6a; letter-spacing: 2px; }
-        .footer { margin-top: 30px; font-size: 12px; color: #888; }
+        .container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; text-align: center; background-color: #f9f9f9; }
+        .content { background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: inline-block; max-width: 500px; }
+        .button {
+            background-color: #a91e6a;
+            color: white !important;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .name { color: #a91e6a; font-weight: bold; text-transform: capitalize; }
+        .warning { font-size: 13px; color: #666; font-style: italic; }
+        .footer { margin-top: 30px; font-size: 12px; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
+
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Confirm Account Deletion</h2>
-        <p>Hello!</p>
-        <p>You received this email because you requested to delete your account on <b>Kingdom of Drama</b>.</p>
-        <p>To confirm, please use this code:</p>
-        <p class="code">{{token}}</p>
-        <p>The code is valid for 1 hour. If you did not make this request, simply ignore this email.</p>
+        <h2 style='color: #333;'>Dear
+          <span class='name'>{{displayName}}</span>!</h2>
+        <p style='color: #666;'>You received this email because you requested to delete your account on <b>Kingdom of Drama</b>.</p>
+        <p style="color:#666">We will delete all your private information (name, email, avatar, phone, telegram, birthdate, about me).</p>
+        <p style='color: #666;'>Please confirm your intent by clicking
+          the button below:</p>
+        <a href='{{confirmUrl}}' class='button'>Confirm Intent</a>
+
+        <p style='color: #666;'>The link is valid for 1 hour. If you did not make this request, simply ignore this email.</p>
         <div class="footer">
             &copy; 2026 Kingdom of Drama. All rights reserved.
         </div>

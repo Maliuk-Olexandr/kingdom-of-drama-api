@@ -61,7 +61,6 @@ router.post('/users/me/request-delete', authenticate, requestDeleteAccount);
 // 2. Фінальне підтвердження (наприклад, введення коду або клік з токеном у body)
 router.post(
   '/users/me/confirm-delete',
-  authenticate,
   celebrate(tokenBodySchema), // Перевірка { "token": "..." } у body
   confirmDeleteAccount,
 );
