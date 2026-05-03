@@ -311,26 +311,24 @@ export async function confirmDeleteAccount(req, res, next) {
   const { token } = req.body;
 
   try {
-    // 1. Верифікуємо JWT
     const decoded = jwt.verify(
       token,
       process.env.JWT_EMAIL_VERIFICATION_SECRET,
     );
 
-    // 2. Шукаємо юзера за ID з токена ТА самим токеном у базі
     const user = await User.findOne({
       _id: decoded.sub,
       verificationToken: token,
     });
 
-    if (!user)
+    if (!user) {
       return next(
         createHttpError(400, 'Invalid token or account already deleted'),
       );
+    }
 
     const anonymousUsername = await generateDeletedUsername();
 
-    // 3. Анонімізація
     const updateData = {
       username: anonymousUsername,
       displayName: 'Deleted Account',
@@ -340,28 +338,29 @@ export async function confirmDeleteAccount(req, res, next) {
         'https://res.cloudinary.com/kingdom-of-drama/image/upload/v1774017551/default-avatar_hbnxwy.webp',
       birthdate: null,
       aboutMe: '',
-      phone: null,
       phoneVerified: false,
-      telegramId: null,
       telegramIdVerified: false,
       emailVerified: false,
       userName: '',
       userSurname: '',
       city: '',
-      verificationToken: null, // Важливо очистити токен!
-      role: 'user', // Можна скинути на базову роль
-      balance: 0, // Обнуляємо баланс
+      verificationToken: null,
+      role: 'user',
+      balance: 0,
     };
 
-    await User.findByIdAndUpdate(user._id, { $set: updateData });
+    // Одночасно оновлюємо дані та ВИДАЛЯЄМО конфліктні поля
+    await User.findByIdAndUpdate(user._id, {
+      $set: updateData,
+      $unset: { phone: '', telegramId: '' },
+    });
 
-    // 4. Очищення куки (якщо запит прийшов з браузера, де була сесія)
     res.clearCookie('accessToken');
     res.clearCookie('refreshToken');
 
     res.status(200).json({ message: 'Success' });
   } catch (error) {
-    console.error('DETAILED DELETE ERROR:', error); // Це покаже реальну причину в терміналі
+    console.error('DETAILED DELETE ERROR:', error);
     if (error.name === 'TokenExpiredError') {
       return next(createHttpError(401, 'Термін дії посилання закінчився'));
     }
