@@ -14,3 +14,4 @@ Sentry.init({
   profilesSampleRate: 1.0, // Аналізувати 100% сесій на предмет продуктивності
   sendDefaultPii: true, // Збирати IP та іншу мета-інформацію
 });
+console.log('SENTRY_DSN IS:', process.env.SENTRY_DSN ? 'LOADED' : 'MISSING');
