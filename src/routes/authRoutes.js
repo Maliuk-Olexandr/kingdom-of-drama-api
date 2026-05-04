@@ -13,7 +13,7 @@ import {
   verifyEmail,
 } from '../controllers/authController.js';
 import { authenticate } from '../middleware/authenticate.js';
-import { authLimiter } from '../middleware/rateLimiter.js';
+import { authLimiter, checkLimiter } from '../middleware/rateLimiter.js';
 import {
   registerUserSchema,
   loginUserSchema,
@@ -25,9 +25,14 @@ import {
 const router = Router();
 
 // 📝 User registration --------------------------------------
-router.post('/register', celebrate(registerUserSchema), registerUser);
+router.post(
+  '/register',
+  authLimiter,
+  celebrate(registerUserSchema),
+  registerUser,
+);
 
-router.post('/login', celebrate(loginUserSchema), authLimiter, loginUser);
+router.post('/login', authLimiter, celebrate(loginUserSchema), loginUser);
 router.post('/logout', authenticate, logoutUser);
 router.post('/verify-email', verifyEmail);
 
@@ -36,6 +41,7 @@ router.post('/refresh', refreshUserSession);
 router.get('/session', getSession);
 router.get(
   '/check-availability',
+  checkLimiter,
   celebrate(checkAvailabilitySchema),
   checkAvailability,
 );
@@ -43,23 +49,16 @@ router.get(
 // 📧 Password reset flow --------------------------------------
 router.post(
   '/request-reset-password-email',
-  celebrate(requestResetEmailSchema),
   authLimiter,
+  celebrate(requestResetEmailSchema),
   requestResetEmail,
 );
 // 2. Безпосередньо зміна пароля (з токеном та ID)
 router.post(
   '/reset-password',
-  celebrate(resetPasswordSchema),
   authLimiter,
+  celebrate(resetPasswordSchema),
   resetPassword,
 );
-
-// router.patch(
-//   '/avatar',
-//   authenticate,
-//   upload.single('avatar'),
-//   authController.updateAvatar,
-// );
 
 export default router;

@@ -4,9 +4,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
-// import swaggerUi from 'swagger-ui-express';
 
-// import { swaggerSpec } from './swagger.js';
 import { connectMongoDB } from './db/connectMongoDB.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './middleware/logger.js';
@@ -26,16 +24,9 @@ app.use(generalLimiter);
 app.use(express.json());
 app.use(cookieParser());
 
-// app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-// app.get('/', (req, res) => res.redirect('/api-docs'));
-
 // public routes
 
 app.use('/api', heroesRoutes);
-
-// app.use(feedbackRoutes);
-// app.use(subscriptionsRoutes);
-// app.use(filterRoutes);
 
 // protected routes
 

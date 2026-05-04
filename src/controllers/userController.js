@@ -361,8 +361,8 @@ export async function confirmDeleteAccount(req, res, next) {
   } catch (error) {
     console.error('DETAILED DELETE ERROR:', error);
     if (error.name === 'TokenExpiredError') {
-      return next(createHttpError(401, 'Термін дії посилання закінчився'));
+      return next(createHttpError(401, 'Token has expired'));
     }
-    next(createHttpError(500, 'Внутрішня помилка сервера при анонімізації'));
+    next(createHttpError(500, 'Internal server error during anonymization'));
   }
 }

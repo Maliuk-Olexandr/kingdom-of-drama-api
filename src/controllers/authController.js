@@ -32,12 +32,18 @@ export const registerUser = async (req, res, next) => {
       inviterId = inviterUser._id;
     }
 
-    // 1. Валідація та перевірка наявності (твій існуючий код)
+    // 1. Валідація та перевірка наявності (з урахуванням можливих "завислих" акаунтів)
     const existingUser = await User.findOne({
       $or: [{ email: normalizedEmail }, { username: normalizedUsername }],
     });
     if (existingUser) {
-      return next(createHttpError(409, `Email or Username is already in use`));
+      if (existingUser.emailVerified) {
+        return next(
+          createHttpError(409, `Email or Username is already in use`),
+        );
+      } else {
+        await User.deleteOne({ _id: existingUser._id }); // Видаляємо "завислий" не верифікований акаунт
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -126,14 +132,11 @@ export const verifyEmail = async (req, res, next) => {
           await User.findByIdAndUpdate(user.inviter, {
             $inc: { balance: 5 },
           });
-          await User.findOneAndUpdate(
-            { _id: user._id },
-            {
-              $inc: {
-                balance: 5, // Нараховуємо 5 коїнів
-              },
+          await User.findByIdAndUpdate(user._id, {
+            $inc: {
+              balance: 5, // Нараховуємо 5 коїнів
             },
-          );
+          });
         } catch (inviterErr) {
           // Логуємо помилку, але НЕ викидаємо її далі (щоб не зламати верифікацію нового юзера)
           console.error('Failed to add bonus to inviter:', inviterErr);
@@ -230,6 +233,7 @@ export const checkAvailability = async (req, res, next) => {
     }
 
     let cleanValue = value.trim().toLowerCase();
+
     if (field === 'telegramId') {
       cleanValue = cleanValue.replace(/^@/, ''); // видаляємо @, якщо він є, для зручності користувача
     }
@@ -244,16 +248,25 @@ export const checkAvailability = async (req, res, next) => {
       query._id = { $ne: excludeUserId };
     }
 
-    const isTaken = await User.exists(query); // .exists швидший за .findOne, бо повертає лише _id або null
-    const displayField = field === 'telegramId' ? 'Telegram username' : field;
-    if (isTaken) {
-      return next(createHttpError(409, `${displayField} is already taken`));
+    const existingUser = await User.findOne(query).select('emailVerified'); // нам потрібен тільки цей флаг для логіки
+
+    if (existingUser) {
+      return res.status(200).json({
+        status: 200,
+        message: existingUser.emailVerified
+          ? `${field} is already in use`
+          : `${field} is already in use but not verified`,
+        data: {
+          available: false,
+          emailVerified: existingUser.emailVerified, // додатково повертаємо статус верифікації для клієнта
+        },
+      });
     }
 
     return res.status(200).json({
       status: 200,
-      message: `${displayField} is available`,
-      data: { available: true },
+      message: `${field} is available`,
+      data: { available: true, emailVerified: false }, // якщо немає користувача, то і верифікації немає
     });
   } catch (error) {
     next(error);
