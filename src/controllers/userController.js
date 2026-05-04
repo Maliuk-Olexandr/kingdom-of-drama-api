@@ -340,7 +340,6 @@ export async function confirmDeleteAccount(req, res, next) {
       aboutMe: '',
       phoneVerified: false,
       telegramIdVerified: false,
-      emailVerified: false,
       userName: '',
       userSurname: '',
       city: '',

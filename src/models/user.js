@@ -165,6 +165,15 @@ userSchema.methods.toJSON = function () {
   delete obj.password;
   return obj;
 };
+userSchema.index(
+  { createdAt: 1 },
+  {
+    // TTL index to automatically delete documents after 24 hours
+    expireAfterSeconds: 60 * 60 * 24,
+    // Only apply TTL to documents where emailVerified is false
+    partialFilterExpression: { emailVerified: false },
+  },
+);
 
 const User = model('User', userSchema);
 export default User;
