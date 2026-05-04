@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import * as Sentry from '@sentry/node';
 import { errors } from 'celebrate';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -28,10 +29,16 @@ app.use(cookieParser());
 
 app.use('/api', heroesRoutes);
 
+app.get('/api/debug-sentry', function mainHandler(req, res) {
+  throw new Error('My first Sentry error!');
+});
+
 // protected routes
 
 app.use('/api', authRoutes);
 app.use('/api', userRoutes);
+
+Sentry.setupExpressErrorHandler(app);
 
 app.use(notFoundHandler);
 app.use(errors());

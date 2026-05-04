@@ -43,8 +43,15 @@ export const errorHandler = (err, req, res, next) => {
 
   // Дефолтна помилка 500
   const statusCode = err.status || 500;
-  res.status(statusCode).json({
+  const response = {
     status: statusCode,
     message: statusCode === 500 ? 'Something went wrong.' : err.message,
-  });
+  };
+
+  // Якщо Sentry згенерував ID для цієї помилки, додаємо його у відповідь
+  if (res.sentry) {
+    response.sentryErrorId = res.sentry;
+  }
+
+  res.status(statusCode).json(response);
 };
