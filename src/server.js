@@ -29,10 +29,6 @@ app.use(cookieParser());
 
 app.use('/api', heroesRoutes);
 
-app.get('/api/debug-sentry', function mainHandler(req, res) {
-  throw new Error('My first Sentry error!');
-});
-
 // protected routes
 
 app.use('/api', authRoutes);
