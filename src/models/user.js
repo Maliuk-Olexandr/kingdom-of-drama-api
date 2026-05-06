@@ -142,6 +142,20 @@ const userSchema = new Schema(
         required: false,
       },
     ],
+    saved: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Saved',
+        required: false,
+      },
+    ],
+    favorites: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Favorite',
+        required: false,
+      },
+    ],
     orders: [
       {
         type: Schema.Types.ObjectId,

@@ -36,3 +36,9 @@ export const tokenBodySchema = {
     token: Joi.string().required(),
   }),
 };
+
+export const usernameParamsSchema = {
+  [Segments.PARAMS]: Joi.object({
+    username: Joi.string().min(3).max(32).trim().lowercase().required(),
+  }),
+};

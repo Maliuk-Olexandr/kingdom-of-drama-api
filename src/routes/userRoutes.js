@@ -3,6 +3,7 @@ import { Router } from 'express';
 
 import {
   getCurrentUser,
+  getUserByUsername,
   updateUser,
   updateUserAvatar,
   confirmEmailChangeIntent,
@@ -16,6 +17,7 @@ import {
   updateUserSchema,
   tokenQuerySchema,
   tokenBodySchema,
+  usernameParamsSchema,
 } from '../validations/userValidation.js';
 
 const router = Router();
@@ -38,7 +40,6 @@ router.patch(
 );
 
 // --- Складна зміна Email (Double Confirmation) ---
-
 // 1. Клік по посиланню на СТАРІЙ пошті
 router.get(
   '/auth/confirm-email-change',
@@ -54,7 +55,6 @@ router.get(
 );
 
 // --- Видалення (Анонімізація) аккаунта ---
-
 // 1. Запит на видалення (відправка листа)
 router.post('/users/me/request-delete', authenticate, requestDeleteAccount);
 
@@ -63,6 +63,13 @@ router.post(
   '/users/me/confirm-delete',
   celebrate(tokenBodySchema), // Перевірка { "token": "..." } у body
   confirmDeleteAccount,
+);
+
+// --- Запит профілю іншого користувача за username ---
+router.get(
+  '/user/:username',
+  celebrate(usernameParamsSchema),
+  getUserByUsername,
 );
 
 export default router;

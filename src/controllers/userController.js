@@ -366,3 +366,29 @@ export async function confirmDeleteAccount(req, res, next) {
     next(createHttpError(500, 'Internal server error during anonymization'));
   }
 }
+
+export async function getUserByUsername(req, res, next) {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({ username }).select(
+      'username displayName avatar aboutMe birthdate userSettings',
+    );
+    if (!user)
+      return res.status(200).json({ message: 'User not found', status: 404 });
+    const response = {
+      username: user.username,
+      displayName: user.displayName,
+      avatar: user.avatar,
+      aboutMe: user.aboutMe,
+      hideSaved: user.userSettings.savedHidden,
+      hideFavorites: user.userSettings.favoritesHidden,
+    };
+    if (!user.userSettings.birthdateHidden && user.birthdate) {
+      response.birthdate = user.birthdate;
+    }
+
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+}

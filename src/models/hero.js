@@ -52,7 +52,7 @@ const heroSchema = new Schema(
         type: Boolean,
         default: true,
       },
-      isPablished: {
+      isPublished: {
         type: Boolean,
         default: false,
       },
@@ -64,7 +64,7 @@ const heroSchema = new Schema(
         type: Boolean,
         default: false,
       },
-      isCannon: {
+      isCanon: {
         type: Boolean,
         default: false,
       },
