@@ -373,15 +373,15 @@ export async function getUserByUsername(req, res, next) {
     const user = await User.findOne({ username }).select(
       'username displayName avatar aboutMe birthdate userSettings',
     );
-    if (!user)
-      return res.status(200).json({ message: 'User not found', status: 404 });
+    if (!user) return res.status(404).json({ message: 'User not found' });
     const response = {
+      _id: user._id,
       username: user.username,
       displayName: user.displayName,
       avatar: user.avatar,
       aboutMe: user.aboutMe,
-      hideSaved: user.userSettings.savedHidden,
-      hideFavorites: user.userSettings.favoritesHidden,
+      hiddenSaved: user.userSettings.savedHidden,
+      hiddenFavorites: user.userSettings.favoritesHidden,
     };
     if (!user.userSettings.birthdateHidden && user.birthdate) {
       response.birthdate = user.birthdate;

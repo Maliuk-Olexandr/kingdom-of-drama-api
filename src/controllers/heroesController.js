@@ -46,8 +46,8 @@ export const getHeroById = async (req, res, next) => {
       .exec();
 
     if (!hero) {
-      // Повертаємо 200, але додаємо прапорець, що героя немає
-      return res.status(200).json({ message: 'Hero not found', status: 404 });
+      // Повертаємо 404, якщо героя не знайдено
+      return res.status(404).json({ message: 'Hero not found' });
     }
 
     res.status(200).json(hero);
