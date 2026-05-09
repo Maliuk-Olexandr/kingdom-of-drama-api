@@ -52,7 +52,7 @@ const heroSchema = new Schema(
         type: Boolean,
         default: true,
       },
-      isPublished: {
+      isAuthorShown: {
         type: Boolean,
         default: false,
       },

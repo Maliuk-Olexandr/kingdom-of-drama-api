@@ -29,3 +29,11 @@ export const AVAILABILITY_FIELDS = {
       'Telegram username must be 5-32 characters long and can contain letters, numbers, and underscores.',
   },
 };
+
+export const ALLOWED_VIEW_MODES = [
+  'all',
+  'in-show',
+  'canon-only',
+  'fans-only',
+  'profile-only',
+];
