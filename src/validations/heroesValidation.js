@@ -4,7 +4,7 @@ import { objectIdValidator } from '../utils/objectIdValidator.js';
 
 export const createHeroSchema = {
   [Segments.BODY]: Joi.object({
-    name: Joi.string().min(2).required(),
+    name: Joi.string().min(2).max(30).required(),
     fullName: Joi.string().allow('', null).optional(),
     title: Joi.string().allow('', null).optional(),
     description: Joi.string().allow('', null).optional(),
