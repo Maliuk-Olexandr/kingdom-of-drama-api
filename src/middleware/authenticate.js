@@ -76,3 +76,59 @@ export const authenticate = async (req, res, next) => {
     next(error);
   }
 };
+
+export const optionalAuth = async (req, res, next) => {
+  try {
+    const { accessToken, sessionId } = req.cookies;
+
+    // Якщо кук немає, це просто гість. Пропускаємо далі без помилки!
+    if (!accessToken || !sessionId) {
+      return next();
+    }
+
+    // 1. Верифікація JWT
+    let userId;
+    try {
+      const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
+      userId = decoded.sub;
+    } catch {
+      // Токен невалідний — вважаємо гостем
+      return next();
+    }
+
+    // 2. Пошук сесії
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      return next();
+    }
+
+    // 3. ПЕРЕВІРКА БЕЗПЕКИ (Fingerprinting)
+    const currentUA = req.headers['user-agent'] || 'unknown';
+    if (session.userAgent !== currentUA.substring(0, 256)) {
+      // Сесія скомпрометована, але ми просто пускаємо як гостя
+      // (опціонально можна тут видалити куки)
+      return next();
+    }
+
+    // 4. Перевірка приналежності сесії
+    if (session.userId.toString() !== userId) {
+      return next();
+    }
+
+    // 5. Завантаження користувача
+    const user = await User.findById(userId).select('-password');
+    if (!user || !user.emailVerified) {
+      return next();
+    }
+
+    // Якщо всі перевірки пройдено — записуємо юзера
+    req.user = user;
+    req.sessionId = sessionId;
+
+    // Передаємо керування контролеру getHeroes
+    next();
+  } catch {
+    // У разі системної помилки (наприклад, БД впала) безпечніше пропустити як гостя
+    next();
+  }
+};

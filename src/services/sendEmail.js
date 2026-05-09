@@ -31,10 +31,6 @@ export const sendEmail = async (options) => {
   transporter.use('compile', hbs(handlebarOptions));
 
   try {
-    console.log(
-      `Sending template [${options.template}] to ${options.to || options.email}...`,
-    );
-
     const mailOptions = {
       from: `"Kingdom of Drama" <${process.env.SMTP_USER}>`,
       to: options.to || options.email,
@@ -44,7 +40,6 @@ export const sendEmail = async (options) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
     return info;
   } catch (error) {
     console.error('Nodemailer Error:', error.message);

@@ -10,7 +10,6 @@ export const getHeroes = async (req, res, next) => {
     if (!ALLOWED_VIEW_MODES.includes(viewMode)) {
       viewMode = null;
     }
-
     const page = Number(req.query.page) || 1;
     const perPage = Number(req.query.perPage) || 8;
     const skip = (page - 1) * perPage;
@@ -41,11 +40,13 @@ export const getHeroes = async (req, res, next) => {
     // 2. ЗАХИСТ: Режим "all" (перегляд чернеток і неопублікованого) доступний ТІЛЬКИ власнику або адміну
     const isAdmin = req.user && req.user.role === 'admin';
     if (viewMode === 'all' && !isOwner && !isAdmin) {
+      console.warn(
+        `Unauthorized access attempt to "all" viewMode by user ${req.user ? req.user._id : 'unknown'}`,
+      );
       // Якщо хакер намагається підглянути "all" у чужому профілі або загальній стрічці —
       // примусово скидаємо в null, що згодом поверне порожній список
       viewMode = null;
     }
-
     // ==========================================
     // НОВА ПЕРЕВІРКА: Якщо viewMode відсутній або не валідний
     if (viewMode === null || viewMode === undefined) {
