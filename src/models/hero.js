@@ -94,7 +94,7 @@ const heroSchema = new Schema(
         type: String,
         trim: true,
       },
-      birthDay: {
+      birthday: {
         type: String,
         trim: true,
       },

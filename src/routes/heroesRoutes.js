@@ -1,8 +1,12 @@
 import { celebrate } from 'celebrate';
 import { Router } from 'express';
 
-import { getHeroes, getHeroById } from '../controllers/heroesController.js';
-import { optionalAuth } from '../middleware/authenticate.js';
+import {
+  getHeroes,
+  getHeroById,
+  createHero,
+} from '../controllers/heroesController.js';
+import { authenticate, optionalAuth } from '../middleware/authenticate.js';
 import {
   createHeroSchema,
   heroIdSchema,
@@ -18,5 +22,7 @@ router.get(
   optionalAuth,
   getHeroById,
 );
+
+router.post('/heroes', authenticate, celebrate(createHeroSchema), createHero);
 
 export default router;

@@ -156,3 +156,26 @@ export const getHeroById = async (req, res, next) => {
     next(error);
   }
 };
+
+export const createHero = async (req, res, next) => {
+  try {
+    // 1. Беремо перевірені дані з req.body (Celebrate вже все провалідував)
+    const heroData = req.body;
+
+    // 2. Створюємо новий документ героя
+    const hero = new Hero({
+      ...heroData,
+      author: req.user._id, // Прив'язуємо ID авторизованого користувача
+    });
+
+    // 3. Зберігаємо у базу даних
+    const savedHero = await hero.save();
+
+    // 4. Повертаємо створеного героя, підтягуючи юзернейм автора
+    const populatedHero = await savedHero.populate('author', 'username');
+
+    res.status(201).json(populatedHero);
+  } catch (error) {
+    next(error);
+  }
+};
