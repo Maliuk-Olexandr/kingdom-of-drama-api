@@ -10,6 +10,7 @@ export const updateUserSchema = {
     userSurname: Joi.string().allow(''),
     phone: Joi.string().allow(''),
     email: Joi.string().email().lowercase(),
+    pendingEmail: Joi.string().allow(null),
     city: Joi.string().allow(''),
     telegramId: Joi.string().allow(''),
     userSettings: Joi.object({

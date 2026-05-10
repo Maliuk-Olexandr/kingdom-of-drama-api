@@ -65,6 +65,7 @@ const flattenObject = (obj, prefix = '') => {
     return acc;
   }, {});
 };
+
 // ======== оновлення юзера ========
 export async function updateUser(req, res, next) {
   try {

@@ -187,7 +187,26 @@ export const loginUser = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Login successful',
-      user,
+      user: {
+        _id: user._id,
+        username: user.username,
+        displayName: user.displayName,
+        avatar: user.avatar,
+        role: user.role,
+        balance: user.balance,
+        aboutMe: user.aboutMe,
+        userName: user.userName,
+        userSurname: user.userSurname,
+        birthday: user.birthday,
+        email: user.email,
+        pendingEmail: user.pendingEmail,
+        phone: user.phone,
+        telegramId: user.telegramId,
+        emailVerified: user.emailVerified,
+        phoneVerified: user.phoneVerified,
+        telegramIdVerified: user.telegramIdVerified,
+        userSettings: user.userSettings,
+      },
     });
   } catch (error) {
     next(error);
