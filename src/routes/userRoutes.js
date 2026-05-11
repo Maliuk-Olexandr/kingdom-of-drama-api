@@ -67,7 +67,7 @@ router.post(
 
 // --- Запит профілю іншого користувача за username ---
 router.get(
-  '/user/:username',
+  '/users/:username',
   celebrate(usernameParamsSchema),
   getUserByUsername,
 );
