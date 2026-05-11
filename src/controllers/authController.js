@@ -13,6 +13,102 @@ import {
 } from '../services/auth.js';
 import { sendEmail } from '../services/sendEmail.js';
 
+export const oauthLogin = async (req, res, next) => {
+  try {
+    const { provider, providerId, email, name, image, secretKey } = req.body;
+
+    // 1. Перевірка безпеки запиту від Next.js
+    if (!secretKey || secretKey !== process.env.INTERNAL_API_SECRET) {
+      return res
+        .status(403)
+        .json({ success: false, message: 'Forbidden: Invalid API Secret' });
+    }
+
+    if (!provider || !providerId) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Missing provider or providerId' });
+    }
+
+    let user = null;
+
+    // 2. Пошук користувача за ID соцмережі
+    if (provider === 'google')
+      user = await User.findOne({ googleId: providerId });
+    else if (provider === 'apple')
+      user = await User.findOne({ appleId: providerId });
+    else if (provider === 'telegram')
+      user = await User.findOne({ telegramId: providerId });
+
+    // 3. Зв'язування існуючого акаунту за email
+    if (!user && email) {
+      user = await User.findOne({ email: email.toLowerCase() });
+
+      if (user) {
+        if (provider === 'google') user.googleId = providerId;
+        if (provider === 'apple') user.appleId = providerId;
+        if (provider === 'telegram') user.telegramId = providerId;
+
+        user.emailVerified = true;
+        if (provider === 'telegram') user.telegramIdVerified = true;
+
+        await user.save();
+      }
+    }
+
+    // 4. Реєстрація нового користувача
+    if (!user) {
+      const newUserFields = {
+        displayName: name || undefined,
+        avatar: image || undefined,
+        emailVerified: provider === 'google' || provider === 'apple',
+        telegramIdVerified: provider === 'telegram',
+      };
+
+      if (provider === 'google') {
+        newUserFields.googleId = providerId;
+        if (email) newUserFields.email = email.toLowerCase();
+      } else if (provider === 'apple') {
+        newUserFields.appleId = providerId;
+        if (email) newUserFields.email = email.toLowerCase();
+      } else if (provider === 'telegram') {
+        // ТВІЙ ОНОВЛЕНИЙ БЛОК ДЛЯ ТЕЛЕГРАМУ:
+        newUserFields.telegramId = providerId;
+        if (email) {
+          newUserFields.email = email.toLowerCase();
+          newUserFields.emailVerified = true;
+        }
+      }
+
+      user = new User(newUserFields);
+      await user.save();
+    }
+
+    // 5. ВИКОРИСТОВУЄМО СИСТЕМУ СЕСІЙ
+    const { session, accessToken, refreshToken } = await createSession(
+      user._id,
+      req,
+    );
+
+    // Встановлюємо куки у відповідь бекенду
+    setSessionCookies(res, accessToken, refreshToken, session);
+
+    // 6. Повертаємо дані (токен також віддаємо в JSON на випадок, якщо Next.js захоче його зберегти у себе)
+    return res.status(200).json({
+      success: true,
+      message: 'Authentication successful',
+      accessToken, // Передаємо для NextAuth
+      refreshToken, // Передаємо для NextAuth
+      sessionId: session._id,
+      user,
+    });
+  } catch (error) {
+    // Передаємо помилку в глобальний обробник (якщо він є) або виводимо в консоль
+    console.error('[OAuth Login Error]:', error);
+    next(error);
+  }
+};
+
 // 📱 Register a new user --------------------------------------
 export const registerUser = async (req, res, next) => {
   try {

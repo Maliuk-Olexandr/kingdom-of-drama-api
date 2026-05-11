@@ -2,6 +2,7 @@ import { celebrate } from 'celebrate';
 import { Router } from 'express';
 
 import {
+  oauthLogin,
   registerUser,
   loginUser,
   logoutUser,
@@ -25,6 +26,9 @@ import {
 const router = Router();
 
 // 📝 User registration --------------------------------------
+
+router.post('/oauth-login', oauthLogin);
+
 router.post(
   '/register',
   authLimiter,
