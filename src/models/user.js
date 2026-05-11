@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import { model, Schema } from 'mongoose';
 
 import { ROLES } from '../constants/const.js';
@@ -12,11 +14,15 @@ const userSchema = new Schema(
       maxlength: 32,
       lowercase: true,
       index: true,
+      default: function () {
+        const randomHex = crypto.randomBytes(6).toString('hex');
+        return `user-${randomHex}`;
+      },
     },
     displayName: {
       type: String,
       trim: true,
-      required: false,
+      required: true,
       maxlength: 64,
       default: function () {
         return this.username;
@@ -66,28 +72,19 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    telegramId: {
+    email: {
       type: String,
       required: false,
       unique: true,
-      sparse: true,
-      trim: true,
-    },
-    telegramIdVerified: {
-      type: Boolean,
-      default: false,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
       trim: true,
       lowercase: true,
+      sparse: true,
     },
     oldEmail: {
       type: String,
       required: false,
       unique: false,
+      sparse: true,
       trim: true,
       lowercase: true,
     },
@@ -95,6 +92,7 @@ const userSchema = new Schema(
       type: String,
       required: false,
       unique: false,
+      sparse: true,
       trim: true,
       lowercase: true,
     },
@@ -102,11 +100,9 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    verificationToken: { type: String },
-    verificationTokenExpires: { type: Date },
     password: {
       type: String,
-      required: true,
+      required: false,
       minlength: 8,
       maxlength: 128,
     },
@@ -135,10 +131,44 @@ const userSchema = new Schema(
       savedHidden: { type: Boolean, default: false },
       favoritesHidden: { type: Boolean, default: false },
     },
+    telegramId: {
+      type: String,
+      required: false,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    telegramIdVerified: {
+      type: Boolean,
+      default: false,
+    },
+    googleId: {
+      type: String,
+      required: false,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    appleId: {
+      type: String,
+      required: false,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    verificationToken: { type: String },
+    verificationTokenExpires: { type: Date },
     heroes: [
       {
         type: Schema.Types.ObjectId,
         ref: 'Hero',
+        required: false,
+      },
+    ],
+    posts: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Post',
         required: false,
       },
     ],
@@ -182,10 +212,14 @@ userSchema.methods.toJSON = function () {
 userSchema.index(
   { createdAt: 1 },
   {
-    // TTL index to automatically delete documents after 24 hours
+    // TTL-індекс: видалити документ через 24 години
     expireAfterSeconds: 60 * 60 * 24,
-    // Only apply TTL to documents where emailVerified is false
-    partialFilterExpression: { emailVerified: false },
+
+    // УМОВА ВИДАЛЕННЯ (працює як логічне "І" для всіх полів):
+    partialFilterExpression: {
+      emailVerified: false, // 1. Пошта НЕ верифікована
+      telegramIdVerified: false, // 2. Телеграм НЕ верифікований
+    },
   },
 );
 
