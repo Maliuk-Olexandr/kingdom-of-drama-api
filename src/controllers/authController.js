@@ -15,7 +15,16 @@ import { sendEmail } from '../services/sendEmail.js';
 
 export const oauthLogin = async (req, res, next) => {
   try {
-    const { provider, providerId, email, name, image, secretKey } = req.body;
+    const {
+      provider,
+      providerId,
+      email,
+      name,
+      image,
+      secretKey,
+      username,
+      phone,
+    } = req.body;
 
     // 1. Перевірка безпеки запиту від Next.js
     if (!secretKey || secretKey !== process.env.INTERNAL_API_SECRET) {
@@ -61,22 +70,23 @@ export const oauthLogin = async (req, res, next) => {
       const newUserFields = {
         displayName: name || undefined,
         avatar: image || undefined,
-        emailVerified: provider === 'google' || provider === 'apple',
+        emailVerified:
+          provider === 'google' ||
+          provider === 'apple' ||
+          provider === 'telegram',
         telegramIdVerified: provider === 'telegram',
       };
 
       if (provider === 'google') {
         newUserFields.googleId = providerId;
         if (email) newUserFields.email = email.toLowerCase();
-      } else if (provider === 'apple') {
-        newUserFields.appleId = providerId;
-        if (email) newUserFields.email = email.toLowerCase();
       } else if (provider === 'telegram') {
-        // ТВІЙ ОНОВЛЕНИЙ БЛОК ДЛЯ ТЕЛЕГРАМУ:
+        newUserFields.username = username || undefined;
+        newUserFields.phone = phone || undefined;
         newUserFields.telegramId = providerId;
+        newUserFields.emailVerified = true;
         if (email) {
           newUserFields.email = email.toLowerCase();
-          newUserFields.emailVerified = true;
         }
       }
 
