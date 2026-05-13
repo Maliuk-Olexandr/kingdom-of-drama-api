@@ -14,10 +14,6 @@ const userSchema = new Schema(
       maxlength: 32,
       lowercase: true,
       index: true,
-      default: function () {
-        const randomHex = crypto.randomBytes(6).toString('hex');
-        return `user-${randomHex}`;
-      },
     },
     displayName: {
       type: String,
@@ -49,12 +45,18 @@ const userSchema = new Schema(
       trim: true,
       required: false,
       maxlength: 32,
+      default: function () {
+        return this.telegramData?.given_name;
+      },
     },
     userSurname: {
       type: String,
       trim: true,
       required: false,
       maxlength: 32,
+      default: function () {
+        return this.telegramData?.family_name;
+      },
     },
     inviter: {
       type: Schema.Types.ObjectId,
@@ -67,10 +69,22 @@ const userSchema = new Schema(
       unique: true,
       sparse: true,
       trim: true,
+      default: function () {
+        return this.telegramData?.phone_number || undefined;
+      },
     },
+    phone_number_verified: {
+      type: Boolean,
+      default: function () {
+        return this.telegramData?.phone_number_verified || false;
+      },
+    },
+
     phoneVerified: {
       type: Boolean,
-      default: false,
+      default: function () {
+        return this.telegramData?.phone_number_verified || false;
+      },
     },
     email: {
       type: String,
@@ -131,12 +145,22 @@ const userSchema = new Schema(
       savedHidden: { type: Boolean, default: false },
       favoritesHidden: { type: Boolean, default: false },
     },
-    telegramId: {
-      type: String,
-      required: false,
-      unique: true,
-      sparse: true,
-      trim: true,
+    telegramData: {
+      id: {
+        type: String,
+        required: false,
+        unique: true,
+        sparse: true,
+        trim: true,
+      },
+      name: { type: String, required: false, trim: true },
+      given_name: { type: String, required: false, trim: true },
+      family_name: { type: String, required: false, trim: true },
+      preferred_username: { type: String, required: false, trim: true },
+      picture: { type: String, required: false, trim: true },
+      sub: { type: String, required: false, trim: true },
+      phone_number: { type: String, required: false, trim: true },
+      phone_number_verified: { type: Boolean, default: false },
     },
     telegramIdVerified: {
       type: Boolean,
@@ -222,6 +246,49 @@ userSchema.index(
     },
   },
 );
+
+userSchema.pre('validate', async function (next) {
+  // 1. Якщо користувач старий і нік НЕ міняли — одразу виходимо
+  if (!this.isNew && !this.isModified('username')) {
+    return next();
+  }
+
+  // 2. Визначаємо базове ім'я (з Telegram або дефолтне для Google)
+  let baseUsername = this.telegramData?.preferred_username;
+
+  if (baseUsername) {
+    baseUsername = baseUsername.toLowerCase().trim();
+  } else {
+    // Якщо це Google/Apple, робимо базою щось нейтральне
+    baseUsername = `user-${crypto.randomBytes(4).toString('hex')}`;
+  }
+
+  let finalUsername = baseUsername;
+  let isUnique = false;
+
+  if (finalUsername.length > 32) {
+    finalUsername = finalUsername.slice(0, 32);
+  }
+  // 3. Запускаємо залізобетонний цикл перевірки в базі
+  while (!isUnique) {
+    const existingUser = await this.constructor.findOne({
+      username: finalUsername,
+    });
+
+    if (!existingUser) {
+      isUnique = true; // Вільно!
+    } else {
+      baseUsername = baseUsername.slice(0, 25); // Обрізаємо до 25 символів, щоб додати "-" і 6-символьний суфікс
+      const hex = crypto.randomBytes(3).toString('hex');
+      finalUsername = `${baseUsername}-${hex}`;
+      // Цикл продовжиться, і ми знову перевіримо новий нік на унікальність
+    }
+  }
+
+  // 4. Присвоюємо унікальний нік
+  this.username = finalUsername;
+  next();
+});
 
 const User = model('User', userSchema);
 export default User;

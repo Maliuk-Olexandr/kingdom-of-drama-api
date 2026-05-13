@@ -22,8 +22,7 @@ export const oauthLogin = async (req, res, next) => {
       name,
       image,
       secretKey,
-      username,
-      phone,
+      telegramData,
     } = req.body;
 
     // 1. Перевірка безпеки запиту від Next.js
@@ -81,10 +80,9 @@ export const oauthLogin = async (req, res, next) => {
         newUserFields.googleId = providerId;
         if (email) newUserFields.email = email.toLowerCase();
       } else if (provider === 'telegram') {
-        newUserFields.username = username || undefined;
-        newUserFields.phone = phone || undefined;
-        newUserFields.telegramId = providerId;
         newUserFields.emailVerified = true;
+        newUserFields.telegramData = telegramData || undefined;
+
         if (email) {
           newUserFields.email = email.toLowerCase();
         }
