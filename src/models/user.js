@@ -73,13 +73,6 @@ const userSchema = new Schema(
         return this.telegramData?.phone_number || undefined;
       },
     },
-    phone_number_verified: {
-      type: Boolean,
-      default: function () {
-        return this.telegramData?.phone_number_verified || false;
-      },
-    },
-
     phoneVerified: {
       type: Boolean,
       default: function () {

@@ -46,7 +46,7 @@ export const oauthLogin = async (req, res, next) => {
     else if (provider === 'apple')
       user = await User.findOne({ appleId: providerId });
     else if (provider === 'telegram')
-      user = await User.findOne({ telegramId: providerId });
+      user = await User.findOne({ 'telegramData.id': providerId });
 
     // 3. Зв'язування існуючого акаунту за email
     if (!user && email) {
@@ -55,7 +55,7 @@ export const oauthLogin = async (req, res, next) => {
       if (user) {
         if (provider === 'google') user.googleId = providerId;
         if (provider === 'apple') user.appleId = providerId;
-        if (provider === 'telegram') user.telegramId = providerId;
+        if (provider === 'telegram') user.telegramData.id = providerId;
 
         user.emailVerified = true;
         if (provider === 'telegram') user.telegramIdVerified = true;
