@@ -88,61 +88,89 @@ export async function updateUser(req, res, next) {
     // Логіка зміни Email
     if (req.body.email) {
       const newEmail = req.body.email.toLowerCase().trim();
-      const oldEmail = userInDb.email.toLowerCase().trim();
-
-      if (newEmail !== oldEmail) {
-        // 1. Перевіряємо унікальність нової пошти
-        const existingUser = await User.findOne({ email: newEmail });
-        if (existingUser) throw createHttpError(409, 'Email already in use');
-
-        // 2. Створюємо JWT токен для підтвердження наміру
-        // Додаємо userId та newEmail в payload, щоб точно знати, хто і на що міняє
-        const intentToken = jwt.sign(
-          {
-            sub: userInDb._id,
-            newEmail: newEmail,
-            action: 'confirm_email_change',
-          },
+      const existingUser = await User.findOne({ email: newEmail });
+      if (existingUser) throw createHttpError(409, 'Email already in use');
+      // ─── СЦЕНАРІЙ А: У ЮЗЕРА ВЗАГАЛІ НЕ БУЛО ПОШТИ (Вхід через Telegram) ───
+      if (!userInDb.email) {
+        // Створюємо реєстраційний токен верифікації (як у registerUser)
+        const verificationToken = jwt.sign(
+          { email: newEmail },
           process.env.JWT_EMAIL_VERIFICATION_SECRET,
-          { expiresIn: '1h' },
+          { expiresIn: '24h' },
         );
 
-        // 3. Записуємо нову пошту в pending, але НЕ міняємо основну, щоб не порушувати логіку входу та не втратити зв'язок з поточним email
+        // Тимчасово записуємо пошту в pendingEmail, щоб користувач не міг під нею увійти, поки не підтвердить
         req.body.pendingEmail = newEmail;
-        req.body.oldEmail = oldEmail; // Зберігаємо стару пошту для подальшого використання
-        delete req.body.email;
+        req.body.verificationToken = verificationToken;
+        delete req.body.email; // Видаляємо з body, щоб не записати в основне поле завчасно
 
-        // 4. Відправляємо лист на СТАРУ пошту (oldEmail)
+        // Надсилаємо реєстраційний лист (шаблон з registerUser)
+        const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
         await sendEmail({
-          to: oldEmail,
-          subject: 'Kingdom of Drama - Confirm Email Change',
-          template: 'confirm-email-change-intent',
+          to: newEmail,
+          subject: 'Kingdom of Drama - Email Verification',
+          template: 'verify-email', // Використовуємо твій існуючий шаблон
           context: {
-            displayName: userInDb.displayName,
-            newEmail: newEmail,
-            confirmUrl: `${process.env.FRONTEND_URL}/confirm-email-change?token=${intentToken}`,
+            verificationUrl,
+            displayName: userInDb.displayName || userInDb.name,
           },
         });
 
-        // Видаляємо email з тіла, щоб findOneAndUpdate не затер основну пошту
+        // ─── СЦЕНАРІЙ Б: У ЮЗЕРА ВЖЕ БУЛА ПОШТА (Зміна існуючої пошти) ───
       } else {
-        delete req.body.email;
+        const oldEmail = userInDb.email.toLowerCase().trim();
+
+        if (newEmail !== oldEmail) {
+          // 2. Створюємо JWT токен для підтвердження наміру
+          // Додаємо userId та newEmail в payload, щоб точно знати, хто і на що міняє
+          const intentToken = jwt.sign(
+            {
+              sub: userInDb._id,
+              newEmail: newEmail,
+              action: 'confirm_email_change',
+            },
+            process.env.JWT_EMAIL_VERIFICATION_SECRET,
+            { expiresIn: '1h' },
+          );
+
+          // 3. Записуємо нову пошту в pending, але НЕ міняємо основну, щоб не порушувати логіку входу та не втратити зв'язок з поточним email
+          req.body.pendingEmail = newEmail;
+          req.body.oldEmail = oldEmail; // Зберігаємо стару пошту для подальшого використання
+          delete req.body.email;
+
+          // 4. Відправляємо лист на СТАРУ пошту (oldEmail)
+          await sendEmail({
+            to: oldEmail,
+            subject: 'Kingdom of Drama - Confirm Email Change',
+            template: 'confirm-email-change-intent',
+            context: {
+              displayName: userInDb.displayName,
+              newEmail: newEmail,
+              confirmUrl: `${process.env.FRONTEND_URL}/confirm-email-change?token=${intentToken}`,
+            },
+          });
+
+          // Видаляємо email з тіла, щоб findOneAndUpdate не затер основну пошту
+        } else {
+          delete req.body.email;
+        }
       }
+
+      const updateData = flattenObject(req.body);
+
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: req.user._id },
+        { $set: updateData },
+        { new: true, runValidators: true },
+      );
+
+      res.status(200).json(updatedUser);
     }
-
-    const updateData = flattenObject(req.body);
-
-    const updatedUser = await User.findOneAndUpdate(
-      { _id: req.user._id },
-      { $set: updateData },
-      { new: true, runValidators: true },
-    );
-
-    res.status(200).json(updatedUser);
   } catch (error) {
     next(error);
   }
 }
+
 // Підтвердження наміру зміни пошти (клік по посиланню в листі зі старої пошти)
 export async function confirmEmailChangeIntent(req, res, next) {
   try {

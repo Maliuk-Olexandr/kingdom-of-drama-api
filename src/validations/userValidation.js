@@ -9,7 +9,7 @@ export const updateUserSchema = {
     userName: Joi.string().allow(''),
     userSurname: Joi.string().allow(''),
     phone: Joi.string().allow(''),
-    email: Joi.string().email().lowercase(),
+    email: Joi.string().email().lowercase().optional().allow(''),
     pendingEmail: Joi.string().allow(null),
     city: Joi.string().allow(''),
     telegramId: Joi.string().allow(''),
