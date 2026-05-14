@@ -214,6 +214,8 @@ export const verifyEmail = async (req, res, next) => {
         },
         {
           $set: {
+            email: decoded.email, // Переносимо pendingEmail в email
+            pendingEmail: null, // Очищаємо pendingEmail після верифікації
             emailVerified: true,
             verificationToken: null, // "Спалюємо" токен після використання
           },
