@@ -160,7 +160,7 @@ export const registerUser = async (req, res, next) => {
     );
 
     const newUser = await User.create({
-      email: normalizedEmail,
+      pendingEmail: normalizedEmail,
       password: hashedPassword,
       username: normalizedUsername,
       verificationToken,
@@ -170,7 +170,7 @@ export const registerUser = async (req, res, next) => {
     // 3. Відправка листа (використовуємо твій існуючий sendEmail)
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
     await sendEmail({
-      to: newUser.email,
+      to: newUser.pendingEmail,
       subject: 'Kingdom of Drama - Email Verification',
       template: 'verify-email',
       context: {
@@ -209,7 +209,7 @@ export const verifyEmail = async (req, res, next) => {
     try {
       const user = await User.findOneAndUpdate(
         {
-          email: decoded.email,
+          pendingEmail: decoded.email,
           verificationToken: token, // Перевіряємо, що токен у базі збігається
         },
         {
