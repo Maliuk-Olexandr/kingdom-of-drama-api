@@ -87,6 +87,7 @@ export const oauthLogin = async (req, res, next) => {
           newUserFields.email = email.toLowerCase();
         }
       }
+      newUserFields.balance = 10; // Нараховуємо 10 коїнів за реєстрацію через соцмережу
 
       user = new User(newUserFields);
       await user.save();
