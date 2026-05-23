@@ -42,7 +42,7 @@ router.patch(
 );
 
 router.patch(
-  '/users/link-telegram',
+  '/users/me/link-telegram',
   authenticate,
   celebrate(linkTelegramSchema),
   linkTelegramAccount,

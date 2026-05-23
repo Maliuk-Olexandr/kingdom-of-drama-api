@@ -4,6 +4,7 @@ import createHttpError from 'http-errors';
 import jwt from 'jsonwebtoken';
 
 import User from '../models/user.js';
+import { createSession, setSessionCookies } from '../services/auth.js';
 import { sendEmail } from '../services/sendEmail.js';
 import { generateDeletedUsername } from '../utils/generateUniqueUsername.js';
 import { saveAvatarToCloudinary } from '../utils/saveFileToCloudinary.js';
@@ -482,9 +483,21 @@ export async function linkTelegramAccount(req, res, next) {
       return next(createHttpError(404, 'User not found'));
     }
 
+    // Оновлюємо СИСТЕМУ СЕСІЙ
+    const { session, accessToken, refreshToken } = await createSession(
+      updatedUser._id,
+      req,
+    );
+
+    // Встановлюємо куки у відповідь бекенду
+    setSessionCookies(res, accessToken, refreshToken, session);
+
     res.status(200).json({
       message: 'Telegram account successfully linked',
       user: updatedUser,
+      accessToken,
+      refreshToken,
+      sessionId: session._id,
     });
   } catch (error) {
     next(error);
