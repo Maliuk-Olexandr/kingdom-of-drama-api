@@ -10,6 +10,7 @@ import {
   completeEmailChange,
   requestDeleteAccount,
   confirmDeleteAccount,
+  linkTelegramAccount,
 } from '../controllers/userController.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { upload } from '../middleware/multer.js';
@@ -18,6 +19,7 @@ import {
   tokenQuerySchema,
   tokenBodySchema,
   usernameParamsSchema,
+  linkTelegramSchema,
 } from '../validations/userValidation.js';
 
 const router = Router();
@@ -37,6 +39,13 @@ router.patch(
   authenticate,
   upload.single('avatar'),
   updateUserAvatar,
+);
+
+router.patch(
+  '/users/link-telegram',
+  authenticate,
+  celebrate(linkTelegramSchema),
+  linkTelegramAccount,
 );
 
 // --- Складна зміна Email (Double Confirmation) ---
