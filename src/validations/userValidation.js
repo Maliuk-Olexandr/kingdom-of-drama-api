@@ -48,7 +48,7 @@ export const usernameParamsSchema = {
 
 export const telegramDataSchema = Joi.object({
   id: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
-  sub: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+  sub: Joi.alternatives().try(Joi.string(), Joi.number()).optional(),
   name: Joi.string().allow('', null).optional(),
   given_name: Joi.string().allow('', null).max(32).optional(),
   family_name: Joi.string().allow('', null).max(32).optional(),
