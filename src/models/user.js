@@ -166,13 +166,6 @@ const userSchema = new Schema(
       sparse: true,
       trim: true,
     },
-    appleId: {
-      type: String,
-      required: false,
-      unique: true,
-      sparse: true,
-      trim: true,
-    },
     verificationToken: { type: String },
     verificationTokenExpires: { type: Date },
     heroes: [

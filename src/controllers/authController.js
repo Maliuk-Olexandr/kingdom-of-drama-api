@@ -43,8 +43,6 @@ export const oauthLogin = async (req, res, next) => {
     // 2. Пошук користувача за ID соцмережі
     if (provider === 'google')
       user = await User.findOne({ googleId: providerId });
-    else if (provider === 'apple')
-      user = await User.findOne({ appleId: providerId });
     else if (provider === 'telegram')
       user = await User.findOne({ 'telegramData.id': providerId });
 
@@ -54,7 +52,6 @@ export const oauthLogin = async (req, res, next) => {
 
       if (user) {
         if (provider === 'google') user.googleId = providerId;
-        if (provider === 'apple') user.appleId = providerId;
         if (provider === 'telegram') user.telegramData.id = providerId;
 
         user.emailVerified = true;

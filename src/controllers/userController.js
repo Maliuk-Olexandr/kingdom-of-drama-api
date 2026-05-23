@@ -396,6 +396,7 @@ export async function confirmDeleteAccount(req, res, next) {
   }
 }
 
+// Запит профілю іншого користувача за username
 export async function getUserByUsername(req, res, next) {
   try {
     const { username } = req.params;
@@ -417,6 +418,74 @@ export async function getUserByUsername(req, res, next) {
     }
 
     res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Прив'язка Telegram ID до існуючого аккаунта (для юзерів, які спочатку реєструвалися через email)
+export async function linkTelegramAccount(req, res, next) {
+  try {
+    const { providerId, telegramData, secretKey } = req.body;
+
+    // 1. Верифікація секретного ключа (щоб запобігти несанкціонованій прив'язці)
+    if (secretKey !== process.env.INTERNAL_API_SECRET) {
+      return next(createHttpError(403, 'Forbidden'));
+    }
+    const currentUserId = req.user.id;
+    if (!currentUserId) {
+      return next(createHttpError(401, 'Unauthorized'));
+    }
+
+    // 2. Перевірка, чи вже є користувач з таким Telegram ID
+    const stringProviderId = String(providerId); // Переконаємося, що це рядок
+    const existingUser = await User.findOne({
+      'telegramData.id': stringProviderId,
+    });
+    if (existingUser) {
+      if (existingUser._id.toString() === currentUserId) {
+        return res.status(200).json({
+          message: 'Telegram account already linked to this user',
+          user: existingUser,
+        });
+      }
+      return next(
+        createHttpError(409, 'Telegram account already linked to another user'),
+      );
+    }
+
+    const updatePayload = {
+      telegramData: telegramData,
+      telegramIdVerified: true,
+    };
+
+    // Якщо Telegram передав ім'я/прізвище, і в профілі користувача ще немає власних даних — заповнюємо їх
+    if (telegramData?.given_name)
+      updatePayload.userName = telegramData.given_name.trim();
+    if (telegramData?.family_name)
+      updatePayload.userSurname = telegramData.family_name.trim();
+
+    // Якщо Telegram передав телефон і він верифікований — підтягуємо в профіль
+    if (telegramData?.phone_number) {
+      updatePayload.phone = telegramData.phone_number.trim();
+      updatePayload.phoneVerified = telegramData.phone_number_verified || false;
+    }
+
+    // 3. Оновлення поточного користувача, додаючи Telegram дані
+    const updatedUser = await User.findByIdAndUpdate(
+      currentUserId,
+      { $set: updatePayload },
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedUser) {
+      return next(createHttpError(404, 'User not found'));
+    }
+
+    res.status(200).json({
+      message: 'Telegram account successfully linked',
+      user: updatedUser,
+    });
   } catch (error) {
     next(error);
   }
