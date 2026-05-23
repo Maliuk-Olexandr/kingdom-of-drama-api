@@ -433,7 +433,7 @@ export async function linkTelegramAccount(req, res, next) {
     if (secretKey !== process.env.INTERNAL_API_SECRET) {
       return next(createHttpError(403, 'Forbidden'));
     }
-    const currentUserId = req.user.id;
+    const currentUserId = req.user._id;
     if (!currentUserId) {
       return next(createHttpError(401, 'Unauthorized'));
     }
