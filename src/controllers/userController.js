@@ -499,7 +499,10 @@ export async function linkTelegramAccount(req, res, next) {
     // 3. Оновлення поточного користувача, додаючи Telegram дані
     const updatedUser = await User.findByIdAndUpdate(
       currentUserId,
-      { $set: updatePayload },
+      {
+        $set: updatePayload,
+        $inc: { balance: 5 }, // Бонус за прив'язку Telegram (можна налаштувати суму)
+      },
       { new: true, runValidators: true },
     );
 
