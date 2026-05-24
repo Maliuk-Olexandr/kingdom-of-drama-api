@@ -435,6 +435,7 @@ export async function getUserByUsername(req, res, next) {
       displayName: user.displayName,
       avatar: user.avatar,
       aboutMe: user.aboutMe,
+      birthdate: user.userSettings.birthdateHidden ? null : user.birthdate,
       hiddenSaved: user.userSettings.savedHidden,
       hiddenFavorites: user.userSettings.favoritesHidden,
     };
