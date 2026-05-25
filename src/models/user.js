@@ -168,48 +168,6 @@ const userSchema = new Schema(
     },
     verificationToken: { type: String },
     verificationTokenExpires: { type: Date },
-    heroes: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Hero',
-        required: false,
-      },
-    ],
-    posts: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Post',
-        required: false,
-      },
-    ],
-    saved: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Saved',
-        required: false,
-      },
-    ],
-    favorites: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Favorite',
-        required: false,
-      },
-    ],
-    orders: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Order',
-        required: false,
-      },
-    ],
-    feedbacks: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Feedback',
-        required: false,
-      },
-    ],
   },
   { timestamps: true, versionKey: false },
 );
