@@ -24,6 +24,18 @@ const userSchema = new Schema(
         return this.username;
       },
     },
+    kingdomId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Kingdom',
+      required: false,
+    },
+    followedKingdoms: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Kingdom',
+        required: false,
+      },
+    ],
     birthdate: {
       type: Date,
       required: false,

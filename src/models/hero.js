@@ -7,6 +7,11 @@ const heroSchema = new Schema(
       required: true,
       default: '1.0',
     },
+    kingdomId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Kingdom',
+      required: false,
+    },
     author: {
       type: Schema.Types.ObjectId,
       ref: 'User',
